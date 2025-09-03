@@ -1,3 +1,4 @@
+// server.js
 require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
@@ -9,33 +10,18 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// --- STATIC ROOT (defaults to ./public next to server.js) ---
-const STATIC_DIR = process.env.STATIC_DIR || 'public';
+// ---------- STATIC CONFIG ----------
+const STATIC_DIR = process.env.STATIC_DIR || 'public';              // override if needed
 const STATIC_ROOT = path.resolve(__dirname, STATIC_DIR);
 console.log('[STATIC ROOT]', STATIC_ROOT);
 
-// quick debug: list files in /public
+// Debug: list files in /public to confirm deploy has the pages
 app.get('/debug/public-list', (_req, res) => {
   let list; try { list = fs.readdirSync(STATIC_ROOT); } catch { list = ['<missing public/>']; }
   res.json({ STATIC_ROOT, list });
 });
 
-// CORS + parsers
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://akobylee.onrender.com,http://localhost:3000')
-  .split(',').map(s => s.trim());
-app.use(cors({ origin: ALLOWED_ORIGINS }));
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
-
-// Serve static FIRST
-app.use(express.static(STATIC_ROOT));
-
-// Explicit routes for pages
-app.get('/', (_req, res) => res.sendFile(path.join(STATIC_ROOT, 'index.html')));
-app.get('/shop', (_req, res) => res.sendFile(path.join(STATIC_ROOT, 'shop.html')));
-app.get('/shop.html', (_req, res) => res.sendFile(path.join(STATIC_ROOT, 'shop.html')));
-
-// ----- (optional) Stripe webhook to email confirmations -----
+// ---------- STRIPE WEBHOOK (raw body; must be BEFORE express.json) ----------
 app.post('/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   try {
     const sig = req.headers['stripe-signature'];
@@ -46,6 +32,7 @@ app.post('/stripe/webhook', express.raw({ type: 'application/json' }), async (re
       const session = await stripe.checkout.sessions.retrieve(event.data.object.id, {
         expand: ['line_items', 'customer_details']
       });
+
       const items = session.line_items?.data || [];
       const email = session.customer_details?.email || session.customer_email;
       const name = session.customer_details?.name || 'Customer';
@@ -86,13 +73,43 @@ app.post('/stripe/webhook', express.raw({ type: 'application/json' }), async (re
   }
 });
 
-// ----- Checkout: always return to /shop.html -----
+// ---------- MIDDLEWARE (after webhook) ----------
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://akobylee.onrender.com,http://localhost:3000')
+  .split(',').map(s => s.trim());
+
+app.use(cors({ origin: ALLOWED_ORIGINS }));
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+
+// Serve static FIRST
+app.use(express.static(STATIC_ROOT));
+
+// ---------- PAGES ----------
+const shopFile = path.join(STATIC_ROOT, 'shop.html');
+
+// Home → shop
+app.get('/', (_req, res) => res.sendFile(shopFile));
+
+// Friendly routes
+app.get('/shop', (_req, res) => res.sendFile(shopFile));
+app.get('/shop.html', (_req, res) => res.sendFile(shopFile));
+
+// GET catch-all → shop (prevents “Not Found” on unknown GET paths)
+app.get('*', (req, res, next) => {
+  if (req.method !== 'GET') return next();
+  res.sendFile(shopFile, err => {
+    if (err) res.status(404).send('Shop page missing. Ensure public/shop.html exists.');
+  });
+});
+
+// ---------- API ----------
 app.post('/create-checkout-session', async (req, res) => {
   try {
     const { items = [], customer } = req.body || {};
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'No items in request.' });
     }
+
     const line_items = items.map(i => ({
       price_data: { currency: 'usd', product_data: { name: i.name }, unit_amount: i.price },
       quantity: i.quantity,
@@ -118,8 +135,11 @@ app.post('/create-checkout-session', async (req, res) => {
   }
 });
 
-// 404 LAST
+// Health (optional)
+app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// 404 LAST (non-GET or if shop missing)
 app.use((req, res) => res.status(404).send('Not Found'));
 
-// Start
+// ---------- START ----------
 app.listen(PORT, '0.0.0.0', () => console.log(`Server on ${PORT}`));
