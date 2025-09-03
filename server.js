@@ -112,6 +112,21 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(express.static(STATIC_ROOT));
 
+// Explicit routes for your pages
+app.get('/', (_req, res) =>
+  res.sendFile(path.join(STATIC_ROOT, 'index.html'))
+);
+
+app.get('/shop', (_req, res) =>
+  res.sendFile(path.join(STATIC_ROOT, 'shop.html'))
+);
+
+app.get('/shop.html', (_req, res) =>
+  res.sendFile(path.join(STATIC_ROOT, 'shop.html'))
+);
+
+// (keep your /health, /stripe/webhook, etc.)
+
 // Optional health/debug
 app.get('/health', (_req, res) => res.json({ ok: true }));
 app.get('/debug/public-list', (_req, res) => {
