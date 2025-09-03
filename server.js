@@ -115,8 +115,8 @@ app.post('/create-checkout-session', async (req, res) => {
       customer_email: customer?.email,
       shipping_address_collection: { allowed_countries: ['US', 'CA', 'GB', 'AU', 'JP', 'DE', 'FR', 'MX', 'SG'] },
 
-      success_url: 'http://localhost:3000/success.html?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: 'http://localhost:3000/shop.html',
+      success_url: 'http://akobylee.onrender.com/success.html?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: 'http://akobylee.onrender.com/shop.html',
       // automatic_tax: { enabled: true }, // if configured in Dashboard
     });
 
