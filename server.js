@@ -6,6 +6,31 @@ const cors = require('cors');
 const nodemailer = require('nodemailer');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
+// ───────── CHECKS SUCCESS.HTML ─────────
+const fs = require('fs');
+const staticRoot = path.join(__dirname, 'public');
+const successPath = path.join(staticRoot, 'success.html');
+
+console.log('[PUBLIC_BASE_URL]', process.env.PUBLIC_BASE_URL);
+console.log('[STATIC ROOT]', staticRoot);
+fs.access(successPath, fs.constants.R_OK, (err) => {
+  console.log(err ? '[MISSING] public/success.html not readable' : '[OK] public/success.html found');
+});
+
+const path = require('path');
+
+// Serve static from /public
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Explicit routes (optional but helps if something else intercepts)
+app.get('/success.html', (_req, res) =>
+  res.sendFile(path.join(__dirname, 'public', 'success.html'))
+);
+app.get('/success', (_req, res) =>
+  res.sendFile(path.join(__dirname, 'public', 'success.html'))
+);
+
+
 // ───────── APP / CONFIG ─────────
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,7 +38,7 @@ const PORT = process.env.PORT || 3000;
 // Your public site base URL (set in Render env):
 //   PRODUCTION: PUBLIC_BASE_URL=https://akobylee.onrender.com
 //   LOCAL:      PUBLIC_BASE_URL=http://localhost:3000
-const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://localhost:3000';
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL;
 
 // ───────── MIDDLEWARE ─────────
 app.use(cors({
