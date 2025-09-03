@@ -1,0 +1,45 @@
+/* thankyou.css */
+
+.thankyou-body {
+  background-color: #d9c79b; /* soft tan */
+  font-family: 'Montserrat', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.thankyou-container {
+  max-width: 600px;
+  margin: 10% auto;
+  text-align: center;
+  background: #fff8e6;
+  padding: 2rem;
+  border-radius: 1rem;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.thankyou-container h1 {
+  color: #333;
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.thankyou-container p {
+  font-size: 1.1rem;
+  color: #555;
+  margin-bottom: 1.5rem;
+}
+
+.back-link {
+  color: #2a2a2a;
+  text-decoration: none;
+  font-weight: 600;
+  background: #c5b176;
+  padding: 0.5rem 1rem;
+  border-radius: 5px;
+  transition: background 0.3s ease;
+}
+
+.back-link:hover {
+  background: #a69464;
+  color: white;
+}

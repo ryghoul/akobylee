@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Web-fonts (optional) -->
+   <link
+  href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap"
+  rel="stylesheet"
+/>
+
+
+  <title>AKO by Lee</title>
+
+  <link rel="stylesheet" href="shop.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<!-- ── NAVBAR ─────────────────────────────────────────────────── -->
+    <nav id="navbar">
+
+  <!-- 1. Logo on the left -->
+  <a href="index.html" id="logo-link">
+    <img src="Pictures/ako.png" alt="AKO by Lee Logo" id="navbar-logo">
+  </a>
+
+  <!-- 2. Links centered via auto margins -->
+  <ul id="nav-links">
+    <li><a href="shop.html">Shop</a></li>
+    <li><a href="contact.html">Contact</a></li>
+    <li><a href="menu.html">Menu</a></li>
+    <li><a href="about.html">About</a></li>
+    <li><a href="gallery.html">Gallery</a></li>
+    <li><a href="reservation.html">Reservation</a></li>
+      <!-- icon links -->
+
+<li class="social-icon">
+  <a href="#" id="cart-toggle" aria-label="Cart">
+    <img src="Pictures/cart.svg" alt="" class="icon" />
+    <span id="cart-badge" class="cart-badge">0</span>
+  </a>
+</li>
+
+  </ul>
+</nav>
+
+<!-- CART SIDEBAR -->
+<aside id="cart-sidebar" aria-hidden="true">
+  <button id="cart-close" aria-label="Close cart">&times;</button>
+  <h2>Your Cart</h2>
+  <div id="cart-items">
+    <!-- JS will inject cart items here -->
+    <p>Your cart is empty.</p>
+  </div>
+    <div id="cart-total" class="cart-total">Total: $0.00</div>
+<button id="checkout-btn">Checkout</button>
+</aside>
+
+<!-- push it below your fixed navbar -->
+<div class="navbar-spacer"></div>
+
+<!-- ── 3-PIC-STYLE SHOP BANNER ─────────────────────────────────────── -->
+
+<section class="shop-pic">
+  <div class="shop-panel panel-1"></div>
+
+<div class="shop-panel panel-2 video-panel">
+  <video 
+    class="shop-video" 
+    src="Pictures/shop3/shop2.mov" 
+    autoplay 
+    muted 
+    loop 
+    playsinline
+  ></video>
+  <div class="shop-overlay">
+    <div class="spin">
+    <img src="Pictures/flower.png" alt="" class="hero-icon">
+    </div>
+    <h1>DRESS FRESH</h1>
+    <p>Shop list upgrade: new fits and snacks.<br>All in the AKO Shop.</p>
+    <a href="#shop-items" class="btn-outline">SHOP</a>
+  </div>
+</div>
+
+
+  <div class="shop-panel panel-3"></div>
+</section>
+
+<!-- ── SHOP ─────────────────────────────────────── -->
+<section class="product-detail" id="shop-items">
+
+  <!-- HOODIES -->
+  <div class="product-card">
+    <div class="product-image">
+      <img src="Pictures/merch/hoodie1.JPG" alt="Sinensis Hoodies">
+    </div>
+    <div class="product-info">
+      <h1>SINESIS HOODIES</h1>
+      <div class="desc-specs-wrapper">
+        <div class="short-desc">
+          An imperfect asymmetrical imprint.<br>
+          Wabi-sabi as they say.<br>
+          The perfect relaxed fit for the tea season.
+        </div>
+        <ul class="product-specs">
+          <li>9.4 oz</li>
+          <li>80% cotton / 20% recycled polyester CVC fleece</li>
+          <li>mid-weight, pre-shrunken</li>
+          <li>oversized relaxed fit</li>
+        </ul>
+      </div>
+      <div class="purchase-box">
+        <div class="price-tag">$45</div>
+        <label>Color
+          <select>
+            <option>Porcelain Blue</option>
+            <option>Charcoal Grey</option>
+            <option>Forest Green</option>
+          </select>
+        </label>
+        <label>Size
+          <select>
+            <option>Small</option>
+            <option>Medium</option>
+            <option>Large</option>
+          </select>
+        </label>
+        <button class="btn-outline add-to-cart">Add to Cart</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHIRTS -->
+  <div class="product-card">
+    <div class="product-image">
+      <img src="Pictures/merch/shirt1.JPG" alt="Tea Shirts">
+    </div>
+    <div class="product-info">
+      <h1>TEA SHIRTS</h1>
+      <div class="desc-specs-wrapper">
+        <div class="short-desc">
+          The starts of something, our signature, our stamp.<br>
+          Inspired by chinese stamps, we chose to use.<br>
+          the flower of the cammellia sensis (the tea plant) to represent AKO.
+        </div>
+        <ul class="product-specs">
+          <li>6.5 oz</li>
+          <li>100% combined cotton</li>
+          <li>2" length reduction true to size,</li>
+          <li>best worn fitted</li>
+        </ul>
+      </div>
+      <div class="purchase-box">
+        <div class="price-tag">$25</div>
+        <label>Color
+          <select>
+            <option>Black</option>
+            <option>White</option>
+            <option>FNF</option>
+          </select>
+        </label>
+        <label>Size
+          <select>
+            <option>XS</option>
+            <option>S</option>
+            <option>M</option>
+            <option>L</option>
+            <option>XL</option>
+          </select>
+        </label>
+        <button class="btn-outline add-to-cart">Add to Cart</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BANDANAS -->
+  <div class="product-card">
+    <div class="product-image">
+      <img src="Pictures/merch/bandana1.JPG" alt="Bandana">
+    </div>
+    <div class="product-info">
+      <h1>FLOWER BANDANA</h1>
+      <div class="desc-specs-wrapper">
+        <div class="short-desc">
+          Our green tea rag.<br>
+          Use it as a bandana or don't :)
+        </div>
+        <ul class="product-specs">
+          <li>22 x 22</li>
+          <li>100% Polyster Sublimated</li>
+        </ul>
+      </div>
+      <div class="purchase-box">
+        <div class="price-tag">$15</div>
+        <button class="btn-outline add-to-cart">Add to Cart</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STICKY RICE -->
+  <div class="product-card">
+    <div class="product-image">
+      <img src="Pictures/merch/stickyrice.jpg" alt="Sticky Rice">
+    </div>
+    <div class="product-info">
+      <h1>STICKY RICE</h1>
+      <div class="desc-specs-wrapper">
+        <div class="short-desc">
+          Ripe Pu-erh Tea, Blended with Nuo Mi Xiang<br>
+          Origin: Yunnan, China<br>
+          Taste Profile: Wheat-like, Malty, Complex (15 grams / 3 servings)
+        </div>
+        <ul class="product-specs">
+          <li>Brewing Instructions:</li>
+          <li>1 bulb</li>
+          <li>1 min</li>
+          <li>120 ml</li>
+          <li>200-205F</li>
+        </ul>
+      </div>
+      <div class="purchase-box">
+        <div class="price-tag">$8</div>
+        <button class="btn-outline add-to-cart">Add to Cart</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LYCHEE TEA -->
+  <div class="product-card">
+    <div class="product-image">
+      <img src="Pictures/merch/LIBT.png" alt="Lychee Infused Black Tea">
+    </div>
+    <div class="product-info">
+      <h1>LYCHEE "INFUSED" BLACK TEA</h1>
+      <div class="desc-specs-wrapper">
+        <div class="short-desc">
+          Small Leaf Assam Black Tea Tossed with Lychee Fruit<br>
+          Origin: Guangdong, China<br>
+          Taste Profile: Bright, Fruity, Fragrant (15 grams / 3 servings)
+        </div>
+        <ul class="product-specs">
+          <li>Brewing Instructions:</li>
+          <li>5 grams</li>
+          <li>1 min</li>
+          <li>120 ml</li>
+          <li>195F</li>
+        </ul>
+      </div>
+      <div class="purchase-box">
+        <div class="price-tag">$8</div>
+        <button class="btn-outline add-to-cart">Add to Cart</button>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<div id="cart-toast" class="toast hidden">Added to cart!</div>
+
+
+<!-- ── FOOTER ─────────────────────────────────────────────────────── -->
+<footer>
+  <!-- Top row: logo, links, icons -->
+  <div class="footer-top">
+    <a href="index.html" class="footer-logo">AKO BY LEE</a>
+    <ul class="footer-nav">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="shop.html">Shop</a></li>
+      <li><a href="menu.html">Menu</a></li>
+      <li><a href="reservation.html">Reservation</a></li>
+    </ul>
+    <div class="footer-icons">
+      <a href="mailto:napppylee@gmail.com" aria-label="Email">
+        <!-- put your mail SVG here -->
+        <svg width="24" height="24" fill="currentColor"><!--…--></svg>
+      </a>
+      <a href="https://www.instagram.com/_.akobylee/?hl=en" aria-label="Instagram">
+        <!-- put your Instagram SVG here -->
+        <svg width="24" height="24" fill="currentColor"><!--…--></svg>
+      </a>
+    </div>
+  </div>
+
+  <hr class="footer-divider">
+
+  <!-- Newsletter -->
+  <div class="footer-newsletter">
+    <h2>Stay in the Loop</h2>
+    <form action="#" method="post" class="newsletter-form">
+      <input type="email" name="email" placeholder="Email" required>
+      <button type="submit">Sign Up</button>
+    </form>
+    <p class="footer-note">
+      This form is protected by reCAPTCHA and the Google 
+      <a href="https://policies.google.com/privacy" target="_blank">Privacy Policy</a> 
+      and 
+      <a href="https://policies.google.com/terms" target="_blank">Terms of Service</a> apply.
+    </p>
+  </div>
+
+  <!-- Bottom row: copyright -->
+  <div class="footer-bottom">
+    <p>© 2025 by AKO by Lee. All rights reserved.</p>
+  </div>
+</footer>
+
+
+  </div>
+
+  <script src="script.js"></script>
+  <script src="contact.js"></script>
+</body>
+</html>

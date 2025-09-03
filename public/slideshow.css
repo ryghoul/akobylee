@@ -1,0 +1,236 @@
+/* ────────────── SLIDESHOW ────────────── */
+.slideshow {
+  position: relative;
+  width: 100%;
+  height: 70vh;
+  overflow: hidden;
+  display: flex;
+}
+
+.slide {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: opacity 0.5s ease;
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+}
+
+.slide.active {
+  opacity: 1;
+  position: relative;
+}
+
+.slide-image {
+  flex: 1;
+  background-size: cover;
+  background-position: center;
+}
+
+.slide-text {
+  flex: 1;
+  background-color: #e3d1a5; /* warm tan tone */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 4rem;
+  color: #222;
+}
+
+.slide-text h4 {
+  text-transform: uppercase;
+  font-weight: normal;
+  margin-bottom: 0.5rem;
+}
+
+.slide-text h2 {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+.slide-text p {
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+}
+
+.btn {
+  background-color: #e3d1a5;
+  color: white;
+  border: 2px solid black;
+  border-radius: 12px;
+  padding: 0.75rem 2rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  background-color: #d4c091; /* slightly darker tan on hover */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  color: white;
+}
+
+
+.slide-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,0.8);
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  z-index: 2;
+}
+
+.slide-nav.prev {
+  left: 0.5rem;
+}
+
+.slide-nav.next {
+  right: 0.5rem;
+}
+
+.slide {
+  pointer-events: none; /* block interactions on hidden slides */
+  z-index: 0;
+}
+
+.slide.active {
+  pointer-events: auto; /* enable interaction only on visible slide */
+  z-index: 1;
+}
+
+
+/* ── DOT NAVIGATION ─────────────────────── */
+.slide-dots {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.5rem;
+  z-index: 5;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #ccc;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.dot.active {
+  background-color: #c52d2f;
+}
+
+/* ── BUTTON STYLE UPGRADE ─────────────────────── */
+.slide-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.4);
+  color: white;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  z-index: 3;
+  border-radius: 50%;
+  transition: background 0.3s;
+}
+
+.slide-nav:hover {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.btn,
+.slide-nav,
+.dot {
+  cursor: pointer;
+}
+
+.slideshow {
+  position: relative;
+  width: 100%;
+  height: 70vh;
+  overflow: hidden;
+}
+
+/* Hide arrows by default */
+.slide-nav {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+/* Show on hover of slideshow */
+.slideshow:hover .slide-nav {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Arrow Style */
+.slide-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(4px);
+  color: white;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  padding: 0.75rem 1.25rem;
+  z-index: 3;
+  border-radius: 4px;
+  transition: background 0.3s ease, opacity 0.3s ease;
+}
+
+/* Hover effect */
+.slide-nav:hover {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* Positioning */
+.slide-nav.prev {
+  left: 1rem;
+}
+
+.slide-nav.next {
+  right: 1rem;
+}
+
+.slide-dots {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.5rem;
+  z-index: 5;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  background-color: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.dot.active {
+  background-color: white;
+}
+
+.dot:hover {
+  background-color: #ddd;
+}

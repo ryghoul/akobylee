@@ -1,0 +1,199 @@
+/* ── ABOUT SECTION ────────────────────────── */
+.about-section {
+  padding: 4rem 2rem;
+  background-color: var(--accent-warm);
+  color: var(--text-nearly-black);
+}
+
+.about-bubble {
+  border: 4px solid black;
+  border-radius: 2rem;
+  padding: 2rem;
+  background-color: var(--bg-cream);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  align-items: center;
+  transition: transform 0.3s ease;
+}
+
+.about-text {
+  flex: 1 1 50%;
+}
+
+.about-text h1 {
+  font-family: var(--font-heading);
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.about-text p {
+  font-family: var(--font-body);
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.about-image {
+  flex: 1 1 40%;
+  text-align: center;
+}
+
+.about-image img {
+  width: 100%;
+  max-width: 400px;
+  border-radius: 1rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+/* ── Story Video Section ───────────────────────────────────────────── */
+.story-video {
+  padding: 2rem 0;                  /* vertical breathing room */
+  background: var(--text-nearly-black);      /* gentle contrast between sections */
+}
+
+.story-video .video-shell {
+  width: min(1100px, 92vw);
+  margin: 0 auto;
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+}
+
+/* Responsive 16:9 frame */
+.story-video-el {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: #000;
+  filter: contrast(1.05) saturate(1.02);
+}
+
+/* Optional overlay text */
+.story-video-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: end start;   /* bottom-left */
+  padding: 1.25rem 1.25rem;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.story-video-overlay h2 {
+  font-family: var(--font-heading);
+  font-size: clamp(1.1rem, 2vw + .2rem, 1.6rem);
+  color: #fff;
+  margin: 0 0 .25rem 0;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.35);
+}
+
+.story-video-overlay p {
+  color: #fff;
+  opacity: .95;
+  font-size: .95rem;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.35);
+}
+
+/* Minimal controls */
+.story-video-controls {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  display: flex;
+  gap: 8px;
+  z-index: 3;
+}
+
+.sv-btn {
+  appearance: none;
+  border: 1px solid rgba(255,255,255,0.7);
+  background: rgba(0,0,0,0.4);
+  color: #fff;
+  font-family: var(--font-heading);
+  font-size: .85rem;
+  padding: .3rem .6rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .2s ease, border-color .2s ease;
+}
+.sv-btn:hover { background: rgba(0,0,0,0.6); border-color: #fff; }
+
+/* Optional: subtle fade-in on load */
+.story-video .video-shell { opacity: 0; transform: translateY(8px); }
+.story-video .video-shell.is-visible {
+  animation: svFade 420ms ease both;
+}
+@keyframes svFade {
+  from { opacity: 0; filter: blur(4px); transform: translateY(8px); }
+  to   { opacity: 1; filter: blur(0);   transform: none; }
+}
+
+
+/* ──  SECTION ────────────────────────── */
+.timeline-section {
+  padding: 4rem 2rem;
+  background-color: var(--accent-warm);
+  color: var(--text-nearly-black);
+  text-align: center;
+}
+
+.timeline-section h2 {
+  font-family: var(--font-heading);
+  font-size: 2.2rem;
+  margin-bottom: 2rem;
+}
+
+.timeline-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+  position: relative;
+  border-left: 3px solid var(--bg-gray);
+  padding-left: 2rem;
+}
+
+.timeline-item {
+  position: relative;
+}
+
+.timeline-date {
+  position: absolute;
+  left: -4.5rem;
+  top: 0;
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: var(--landing-gray);
+}
+
+.timeline-content {
+  background: var(--bg-cream);
+  padding: 1rem 1.5rem;
+  border-radius: 1rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  text-align: left;
+}
+
+.timeline-content h3 {
+  font-size: 1.3rem;
+  margin-bottom: 0.5rem;
+  font-family: var(--font-heading);
+}
+
+/* TIMELINE ANIMATION */
+/* Scroll animation base (hidden state) */
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+/* Active state once in view */
+.animate-on-scroll.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Web-fonts (optional) -->
+   <link
+  href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap"
+  rel="stylesheet"
+/>
+
+
+  <title>AKO by Lee</title>
+
+  <link rel="stylesheet" href="index.css" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="slideshow.css"/>
+</head>
+<body>
+  <!-- ── LANDING OVERLAY ─────────────────────────────────────────────────── -->
+  <div id="landing">
+    <button id="enter-button" aria-label="Enter AKO by Lee">
+      <img src="Pictures/teapot.png" alt="Teapot Icon" id="teapot-icon" />
+      <span id="enter-text">ENTER</span>
+    </button>
+  </div>
+
+  <!-- Placeholder for future content -->
+  <div id="main-content">
+    <!-- build your navbar & page here later -->
+
+<!-- ── NAVBAR ─────────────────────────────────────────────────── -->
+    <nav id="navbar">
+
+  <!-- 1. Logo on the left -->
+  <a href="index.html" id="logo-link">
+    <img src="Pictures/ako.png" alt="AKO by Lee Logo" id="navbar-logo">
+  </a>
+
+  <!-- 2. Links centered via auto margins -->
+  <ul id="nav-links">
+    <li><a href="shop.html">Shop</a></li>
+    <li><a href="contact.html">Contact</a></li>
+    <li><a href="menu.html">Menu</a></li>
+    <li><a href="about.html">About</a></li>
+    <li><a href="gallery.html">Gallery</a></li>
+    <li><a href="reservation.html">Reservation</a></li>
+      <!-- icon links -->
+
+<li class="social-icon">
+  <a href="#" id="cart-toggle" aria-label="Cart">
+    <img src="Pictures/cart.svg" alt="" class="icon" />
+    <span id="cart-badge" class="cart-badge">0</span>
+  </a>
+</li>
+
+  </ul>
+</nav>
+
+<!-- CART SIDEBAR -->
+<aside id="cart-sidebar" aria-hidden="true">
+  <button id="cart-close" aria-label="Close cart">&times;</button>
+  <h2>Your Cart</h2>
+  <div id="cart-items">
+    <!-- JS will inject cart items here -->
+    <p>Your cart is empty.</p>
+  </div>
+    <div id="cart-total" class="cart-total">Total: $0.00</div>
+<button id="checkout-btn">Checkout</button>
+</aside>
+
+<!-- ── VIDEO BANNER ─────────────────────────────────────────────────── -->
+<section class="video-banner">
+  <video 
+    class="banner-video" 
+    src="Videos/akobyleecut.mp4" 
+    autoplay 
+    muted 
+    loop 
+    playsinline
+  ></video>
+
+  <!-- new overlay -->
+  <div class="video-overlay">
+    <h1>welcome, come sit and drink some tea with us</h1>
+  </div>
+</section>
+
+<!-- ── SLIDESHOW ─────────────────────────────────────────────────────── -->
+<section class="slideshow">
+  <!-- Slide 1 -->
+  <div class="slide active">
+    <div class="slide-image" style="background-image: url('Pictures/slideshow/slide1.JPG');">
+    </div>
+    <div class="slide-text">
+      <h4>AKO BY LEE</h4>
+      <h2>ABOUT US</h2>
+      <p>Rooted in culture, community, and creativity — discover the story behind AKO by Lee.</p>
+      <a href="about.html" class="btn">Learn About Us</a>
+    </div>
+  </div>
+
+  <!-- Slide 2 -->
+  <div class="slide">
+    <div class="slide-image" style="background-image: url('Pictures/slideshow/slide2.jpeg');"></div>
+    <div class="slide-text">
+      <h4>AKO BY LEE</h4>
+      <h2>SHOP</h2>
+      <p>Support our small business through curated pieces and collabs</p>
+      <a href="shop.html" class="btn">Visit Shop</a>
+    </div>
+  </div>
+
+  <!-- Slide 3 -->
+  <div class="slide">
+    <div class="slide-image" style="background-image: url('Pictures/slideshow/slide3.JPG');"></div>
+    <div class="slide-text">
+      <h4>AKO BY LEE</h4>
+      <h2>COMMUNI-TEA</h2>
+      <p>Endlessly grateful for the Dance Community for the support</p>
+      <a href="gallery.html" class="btn">View Gallery</a>
+    </div>
+  </div>
+
+  <!-- Navigation Arrows -->
+ <button class="slide-nav prev">&#10094;</button>
+  <button class="slide-nav next">&#10095;</button>
+
+    <!-- Navigation Dot -->
+<div class="slide-dots">
+  <span class="dot active" data-index="0"></span>
+  <span class="dot" data-index="1"></span>
+  <span class="dot" data-index="2"></span>
+</div>
+</section>
+
+
+<!-- ── CARD GRID ─────────────────────────────────────────────────────── -->
+
+<div class="card-grid">
+  <a href="shop.html" class="card coffee">
+    <div class="bg"></div>
+    <div class="title">MERCH</div>
+    <img src="Pictures/index3/shirt.JPG" alt="Merch">
+  </a>
+  <a href="menu.html" class="card tea">
+    <div class="bg"></div>
+    <div class="title">TEA</div>
+    <img src="Pictures/index3/drink.JPG" alt="Tea">
+  </a>
+  <a href="gallery.html" class="card bites">
+    <div class="bg"></div>
+    <div class="title">COMMUNITY</div>
+    <img src="Pictures/index3/gal.JPG" alt="Community">
+  </a>
+</div>
+
+<!-- ── FOOTER ─────────────────────────────────────────────────────── -->
+<footer>
+  <!-- Top row: logo, links, icons -->
+  <div class="footer-top">
+    <a href="index.html" class="footer-logo">AKO BY LEE</a>
+    <ul class="footer-nav">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="shop.html">Shop</a></li>
+      <li><a href="menu.html">Menu</a></li>
+      <li><a href="reservation.html">Reservation</a></li>
+    </ul>
+    <div class="footer-icons">
+      <a href="mailto:napppylee@gmail.com" aria-label="Email">
+        <!-- put your mail SVG here -->
+        <svg width="24" height="24" fill="currentColor"><!--…--></svg>
+      </a>
+      <a href="https://www.instagram.com/_.akobylee/?hl=en" aria-label="Instagram">
+        <!-- put your Instagram SVG here -->
+        <svg width="24" height="24" fill="currentColor"><!--…--></svg>
+      </a>
+    </div>
+  </div>
+
+  <hr class="footer-divider">
+
+  <!-- Newsletter -->
+  <div class="footer-newsletter">
+    <h2>Stay in the Loop</h2>
+    <form action="#" method="post" class="newsletter-form">
+      <input type="email" name="email" placeholder="Email" required>
+      <button type="submit">Sign Up</button>
+    </form>
+    <p class="footer-note">
+      This form is protected by reCAPTCHA and the Google 
+      <a href="https://policies.google.com/privacy" target="_blank">Privacy Policy</a> 
+      and 
+      <a href="https://policies.google.com/terms" target="_blank">Terms of Service</a> apply.
+    </p>
+  </div>
+
+  <!-- Bottom row: copyright -->
+  <div class="footer-bottom">
+    <p>© 2025 by AKO by Lee. All rights reserved.</p>
+  </div>
+</footer>
+
+
+  </div>
+
+  <script src="script.js"></script>
+  <script src="slideshow.js"></script>
+  <script src="landing.js"></script>
+</body>
+</html>

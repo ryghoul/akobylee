@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Web-fonts (optional) -->
+   <link
+  href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap"
+  rel="stylesheet"
+/>
+
+
+  <title>AKO by Lee</title>
+
+  <link rel="stylesheet" href="menu.css" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="slideshow.css"/>
+</head>
+<body>
+<!-- ── NAVBAR ─────────────────────────────────────────────────── -->
+    <nav id="navbar">
+
+  <!-- 1. Logo on the left -->
+  <a href="index.html" id="logo-link">
+    <img src="Pictures/ako.png" alt="AKO by Lee Logo" id="navbar-logo">
+  </a>
+
+  <!-- 2. Links centered via auto margins -->
+  <ul id="nav-links">
+    <li><a href="shop.html">Shop</a></li>
+    <li><a href="contact.html">Contact</a></li>
+    <li><a href="menu.html">Menu</a></li>
+    <li><a href="about.html">About</a></li>
+    <li><a href="gallery.html">Gallery</a></li>
+    <li><a href="reservation.html">Reservation</a></a></li>
+      <!-- icon links -->
+
+<li class="social-icon">
+  <a href="#" id="cart-toggle" aria-label="Cart">
+    <img src="Pictures/cart.svg" alt="" class="icon" />
+    <span id="cart-badge" class="cart-badge">0</span>
+  </a>
+</li>
+
+  </ul>
+</nav>
+
+<!-- CART SIDEBAR -->
+<aside id="cart-sidebar" aria-hidden="true">
+  <button id="cart-close" aria-label="Close cart">&times;</button>
+  <h2>Your Cart</h2>
+  <div id="cart-items">
+    <!-- JS will inject cart items here -->
+    <p>Your cart is empty.</p>
+  </div>
+    <div id="cart-total" class="cart-total">Total: $0.00</div>
+<button id="checkout-btn">Checkout</button>
+</aside>
+
+<!-- push it below your fixed navbar -->
+<div class="navbar-spacer"></div>
+
+<!-- ── DRINK SLIDESHOW ─────────────────────────────────────────────────────── -->
+<section class="slideshow">
+  <!-- Slide 1 -->
+  <div class="slide active">
+    <div class="slide-image" style="background-image: url('Pictures/drinkslides/d1.JPG');"></div>
+    <div class="slide-text">
+      <h4>AKO BY LEE</h4>
+      <h2>"STICKY RICE" Pu-erh Tea</h2>
+      <p>A blend with “Nuo Mi Xiang” giving a rounded rice taste. Pu-erh tea is a fermented aged tea. It's malty, wheat-like, and complex in flavor.</p>
+      <a href="#current" class="btn">Check it out!</a>
+    </div>
+  </div>
+
+  <!-- Slide 2 -->
+  <div class="slide">
+    <div class="slide-image" style="background-image: url('Pictures/drinkslides/d2.JPG');"></div>
+    <div class="slide-text">
+      <h4>AKO BY LEE</h4>
+      <h2>LYCHEE INFUSED BLACK TEA</h2>
+      <p>Real Lychee Fruit smoked and infused into the congou black tea, which naturally sweetens and flavors the tea with a fruity note</p>
+      <a href="#current" class="btn">Check it out!</a>
+    </div>
+  </div>
+
+  <!-- Slide 3 -->
+  <div class="slide">
+    <div class="slide-image" style="background-image: url('Pictures/drinkslides/d3.JPG');"></div>
+    <div class="slide-text">
+      <h4>AKO BY LEE</h4>
+      <h2>ROOIBOS TEA</h2>
+      <p>A non-caffeinated African tea that has refreshing, nutty, and earthy tones with notes of citrus, sage, and honey</p>
+      <a href="#current" class="btn">Check it out!</a>
+    </div>
+  </div>
+
+  <!-- Navigation Arrows -->
+  <button class="slide-nav prev">&#10094;</button>
+  <button class="slide-nav next">&#10095;</button>
+
+    <!-- Navigation Dot -->
+<div class="slide-dots">
+  <span class="dot active" data-index="0"></span>
+  <span class="dot" data-index="1"></span>
+  <span class="dot" data-index="2"></span>
+</div>
+
+</section>
+
+
+
+<!-- ── INTRO ─────────────────────────────────────────────────── -->
+
+<section class="menu-intro">
+  <div class="menu-intro-wrapper">
+    <div class="intro-left">
+      <h4 class="menu-label">DRINKS</h4>
+      <h2 class="menu-headline">INTRO CARD</h2>
+    </div>
+    <div class="intro-right"  id="current">
+      <h4 class="intro-heading">WELCOME</h4>
+      <p class="intro-description">
+        Take a look at our teas — each one crafted to bring you a unique flavor, aroma, and experience. From soothing classics to bold blends, there’s something here for every moment.
+        </p>
+        </div>
+        </div>
+        </section>
+
+<!-- ── MENU ─────────────────────────────────────────────────── -->
+<section class="menu-section">
+<!-- CURRENT MENU -->
+  <div class="subsection-header">
+    <h2>Current Menu</h2>
+    <hr />
+  </div>
+
+  <div class="menu-grid">
+
+    <div class="menu-card" data-name="Rooibus" data-description="An non-caffeinated African tea that has refreshing, nutty, and earthy tones. With notes of citrus, sage, and honey" data-image="Pictures/menu/current/r.JPG">
+      <img src="Pictures/menu/current/r.JPG">
+      <h3>Rooibus</h3>
+      <p>An non-caffeinated African tea that has refreshing, nutty, and earthy tones. With notes of citrus, sage, and honey</p>
+    </div>
+
+    <div class="menu-card" data-name="Lychee Infused: Black Tea" data-description="Real Lychee Fruit smoked and infused into the congou black tea, which naturally sweetens and flavors the tea with a fruity note" data-image="Pictures/menu/current/libt.JPG">
+      <img src="Pictures/menu/current/libt.JPG">
+      <h3>Lychee Infused: Black Tea</h3>
+      <p>Real Lychee Fruit smoked and infused into the congou black tea, which naturally sweetens and flavors the tea with a fruity note</p>
+    </div>
+
+    <div class="menu-card" data-name="AKO’s Matcha Latte" data-description="Sourced from Ujiwakamori, Uji, this matcha is rich, velvety, and smooth. Sweetened with an imported japanese brown sugar syrup" data-image="Pictures/menu/current/aml.JPG">
+      <img src="Pictures/menu/current/aml.JPG">
+      <h3>AKO's Matcha Latte</h3>
+      <p>Sourced from Ujiwakamori, Uji, this matcha is rich, velvety, and smooth. Sweetened with an imported japanese brown sugar syrup</p>
+    </div>
+
+    <div class="menu-card" data-name="Sticky Rice Pu-erh Tea" data-description="A blend with “Nuo Mi Xiang” giving a rounded rice taste. Pu=erh tea is a fermented aged tea. It's malty, wheat-like, and complex in flavor." data-image="Pictures/menu/current/srpt.JPG">
+      <img src="Pictures/menu/current/srpt.JPG">
+      <h3>Sticky Rice Pu-erh Tea</h3>
+      <p>A blend with “Nuo Mi Xiang” giving a rounded rice taste. Pu=erh tea is a fermented aged tea. It's malty, wheat-like, and complex in flavor.</p>
+    </div>
+  </div>
+
+  <!-- GOING NOWHERE MENU 2025 -->
+    <div class="subsection-header">
+    <h2>Going Nowhere Menu 2025</h2>
+    <hr />
+  </div>
+
+  <div class="menu-grid">
+
+    <div class="menu-card" data-name="Bittersweet Kiss" data-description="AKO’s first non-alcoholic mocktail. It’s a play on a feeling. This uses a base of a Rooibos concentrate, orange oil, lemon, aperitif, and a zero proof Gin" data-image="Pictures/menu/gnw/bsk.JPG">
+      <img src="Pictures/menu/gnw/bsk.JPG">
+      <h3>Bittersweet Kiss</h3>
+      <p>AKO’s first non-alcoholic mocktail. It’s a play on a feeling. This uses a base of a Rooibos concentrate, orange oil, lemon, aperitif, and a zero proof Gin</p>
+    </div>
+
+    <div class="menu-card" data-name="Sweet Dreams" data-description="An Oolong Cream Soda”. A carbonated tea highball, that has roasty and nutty notes. This uses a Roasted Tie Guan Yin concentrate, brown sugar and vanilla" data-image="Pictures/menu/gnw/sd.JPG">
+      <img src="Pictures/menu/gnw/sd.JPG">
+      <h3>Sweet Dreams</h3>
+      <p>An Oolong Cream Soda”. A carbonated tea highball, that has roasty and nutty notes. This uses a Roasted Tie Guan Yin concentrate, brown sugar and vanilla</p>
+    </div>
+
+    <div class="menu-card" data-name="Campfires 2.0" data-description="Derived from the “Campfires and Marshmallow” drink we made in our winter menu, it's a lapsang souchong base with a wuyi oolong creamtop, garnished with toffee crumble. This version is an enhanced version, with the change of an oolong foam, transforming the drink from a heavy, smokey, sweet drink to a calming sitting by the fireplace" data-image="Pictures/menu/gnw/c2.JPG">
+      <img src="Pictures/menu/gnw/c2.JPG">
+      <h3>Campfires 2.0</h3>
+      <p>Derived from the “Campfires and Marshmallow” drink we made in our winter menu, it's a lapsang souchong base with a wuyi oolong creamtop, garnished with toffee crumble. This version is an enhanced version, with the change of an oolong foam, transforming the drink from a heavy, smokey, sweet drink to a calming sitting by the fireplace</p>
+    </div>
+  </div>
+
+  <!-- SEASONAL SPRING/SUMMER MENU 2025 -->
+  <div class="subsection-header">
+    <h2>Seasonal Spring/Summer Menu 2025</h2>
+    <hr />
+  </div>
+
+  <div class="menu-grid">
+
+    <div class="menu-card" data-name="Kisses" data-description="Strawberry Matcha" data-image="Pictures/menu/spring.sum/k.JPG">
+      <img src="Pictures/menu/spring.sum/k.JPG">
+      <h3>Kisses</h3>
+      <p>Strawberry Matcha</p>
+    </div>
+
+  </div>
+
+  <!-- SEASONAL FALL/WINTER MENU 2024-->
+  <div class="subsection-header">
+    <h2>Seasonal Fall/Winter Menu 2024</h2>
+    <hr />
+  </div>
+
+  <div class="menu-grid">
+
+    <div class="menu-card" data-name="AKO’s Hojicha Latte" data-description="A roasted matcha from Shirakawa, Uji. It’s chocolatey, nutty, and woody version to our beloved matcha lattes" data-image="Pictures/menu/fall.wint/ahl.JPG">
+      <img src="Pictures/menu/fall.wint/ahl.JPG">
+      <h3>AKO’s Hojicha Latte</h3>
+      <p>Derived from the “Campfires and Marshmallow” drink we made in our winter menu, it's a lapsang souchong base with a wuyi oolong creamtop, garnished with toffee crumble. This version is an enhanced version, with the change of an oolong foam, transforming the drink from a heavy, smokey, sweet drink to a calming sitting by the fireplace</p>
+    </div>
+
+    <div class="menu-card" data-name="Campfires and Marshmallows" data-description="This is a smoked black tea base with a wuyi oolong infused cream top with a toffee crumble. It reminds of a nostalgic feeling of an open fire and pine wood with marshmallows being roasted over a fire" data-image="Pictures/menu/fall.wint/cfmm.JPG">
+      <img src="Pictures/menu/fall.wint/cfmm.JPG">
+      <h3>Campfires 2.0</h3>
+      <p>Derived from the “Campfires and Marshmallow” drink we made in our winter menu, it's a lapsang souchong base with a wuyi oolong creamtop, garnished with toffee crumble. This version is an enhanced version, with the change of an oolong foam, transforming the drink from a heavy, smokey, sweet drink to a calming sitting by the fireplace</p>
+    </div>
+
+    <div class="menu-card" data-name='"Coffee"' data-description="A korean inspired mix of bori-cha and hyeonmi-cha. Prepared in a similar way to a pour over coffee. This gives the iconic coffee taste and aroma without any of the caffeine" data-image="Pictures/menu/fall.wint/ahl.JPG">
+      <img src="Pictures/menu/fall.wint/ahl.JPG">
+      <h3>"Coffee"</h3>
+      <p>A korean inspired mix of bori-cha and hyeonmi-cha. Prepared in a similar way to a pour over coffee. This gives the iconic coffee taste and aroma without any of the caffeine</p>
+    </div>
+    
+  </div>
+  
+</section>
+
+<!-- MODAL STRUCTURE -->
+<div id="drink-modal" class="modal">
+  <div class="modal-content">
+    <button class="modal-close" id="modal-close">&times;</button>
+    <div class="modal-left">
+      <img id="modal-image" src="" alt="Drink Image">
+    </div>
+    <div class="modal-right">
+      <h2 id="modal-title">Drink Name</h2>
+      <p id="modal-description">Drink description goes here.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── FOOTER ─────────────────────────────────────────────────────── -->
+<footer>
+  <!-- Top row: logo, links, icons -->
+  <div class="footer-top">
+    <a href="index.html" class="footer-logo">AKO BY LEE</a>
+    <ul class="footer-nav">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="shop.html">Shop</a></li>
+      <li><a href="menu.html">Menu</a></li>
+      <li><a href="reservation.html">Reservation</a></li>
+    </ul>
+    <div class="footer-icons">
+      <a href="mailto:napppylee@gmail.com" aria-label="Email">
+        <!-- put your mail SVG here -->
+        <svg width="24" height="24" fill="currentColor"><!--…--></svg>
+      </a>
+      <a href="https://www.instagram.com/_.akobylee/?hl=en" aria-label="Instagram">
+        <!-- put your Instagram SVG here -->
+        <svg width="24" height="24" fill="currentColor"><!--…--></svg>
+      </a>
+    </div>
+  </div>
+
+  <hr class="footer-divider">
+
+  <!-- Newsletter -->
+  <div class="footer-newsletter">
+    <h2>Stay in the Loop</h2>
+    <form action="#" method="post" class="newsletter-form">
+      <input type="email" name="email" placeholder="Email" required>
+      <button type="submit">Sign Up</button>
+    </form>
+    <p class="footer-note">
+      This form is protected by reCAPTCHA and the Google 
+      <a href="https://policies.google.com/privacy" target="_blank">Privacy Policy</a> 
+      and 
+      <a href="https://policies.google.com/terms" target="_blank">Terms of Service</a> apply.
+    </p>
+  </div>
+
+  <!-- Bottom row: copyright -->
+  <div class="footer-bottom">
+    <p>© 2025 by AKO by Lee. All rights reserved.</p>
+  </div>
+</footer>
+  </div>
+
+  <script src="script.js"></script>
+  <script src="slideshow.js"></script>
+  <script src="menu.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Web-fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet" />
+
+  <title>AKO by Lee</title>
+
+  <link rel="stylesheet" href="contact.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- ── NAVBAR ── -->
+  <nav id="navbar">
+    <a href="index.html" id="logo-link">
+      <img src="Pictures/ako.png" alt="AKO by Lee Logo" id="navbar-logo">
+    </a>
+    <ul id="nav-links">
+      <li><a href="shop.html">Shop</a></li>
+      <li><a href="contact.html">Contact</a></li>
+      <li><a href="menu.html">Menu</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="gallery.html">Gallery</a></li>
+      <li><a href="reservation.html">Reservation</a></li>
+      <li class="social-icon">
+        <a href="#" id="cart-toggle" aria-label="Cart">
+          <img src="Pictures/cart.svg" alt="" class="icon" />
+          <span id="cart-badge" class="cart-badge">0</span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- CART SIDEBAR -->
+  <aside id="cart-sidebar" aria-hidden="true">
+    <button id="cart-close" aria-label="Close cart">&times;</button>
+    <h2>Your Cart</h2>
+    <div id="cart-items"><p>Your cart is empty.</p></div>
+    <div id="cart-total" class="cart-total">Total: $0.00</div>
+    <button id="checkout-btn">Checkout</button>
+  </aside>
+
+  <div class="navbar-spacer"></div>
+
+  <!-- ── CONTACT ── -->
+  <section id="contact" class="contact-section">
+    <div class="contact-container">
+      <div class="contact-sidebar">
+        <h2>Contact Info</h2>
+        <p><strong>Email:</strong><br> napppy.lee@gmail.com</p>
+        <p><strong>Instagram:</strong><br> <a href="https://www.instagram.com/_.akobylee/" target="_blank">@_.akobylee</a></p>
+        <p><strong>Location:</strong><br> Los Angeles, CA</p>
+      </div>
+
+      <div class="contact-main">
+        <h1>Let's Connect</h1>
+        <p>Have a question, collaboration idea, or just want to say hi? Drop us a message and we’ll get back to you soon!</p>
+
+        <form id="contact-form" class="contact-form">
+          <label for="name">Name</label>
+          <input type="text" id="name" name="name" required placeholder="Your name" />
+
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required placeholder="you@example.com" />
+
+          <label for="message">Message</label>
+          <textarea id="message" name="message" rows="6" required placeholder="Write your message here..."></textarea>
+
+          <button type="submit">Send Message</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ── -->
+  <footer>
+    <div class="footer-top">
+      <a href="index.html" class="footer-logo">AKO BY LEE</a>
+      <ul class="footer-nav">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="shop.html">Shop</a></li>
+        <li><a href="menu.html">Menu</a></li>
+        <li><a href="reservation.html">Reservation</a></li>
+      </ul>
+      <div class="footer-icons">
+        <a href="mailto:napppylee@gmail.com" aria-label="Email">
+          <svg width="24" height="24" fill="currentColor"><!--…--></svg>
+        </a>
+        <a href="https://www.instagram.com/_.akobylee/?hl=en" aria-label="Instagram">
+          <svg width="24" height="24" fill="currentColor"><!--…--></svg>
+        </a>
+      </div>
+    </div>
+
+    <hr class="footer-divider">
+
+    <div class="footer-newsletter">
+      <h2>Stay in the Loop</h2>
+      <form action="#" method="post" class="newsletter-form">
+        <input type="email" name="email" placeholder="Email" required>
+        <button type="submit">Sign Up</button>
+      </form>
+      <p class="footer-note">
+        This form is protected by reCAPTCHA and the Google 
+        <a href="https://policies.google.com/privacy" target="_blank">Privacy Policy</a> 
+        and 
+        <a href="https://policies.google.com/terms" target="_blank">Terms of Service</a> apply.
+      </p>
+    </div>
+
+    <div class="footer-bottom">
+      <p>© 2025 by AKO by Lee. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="script.js"></script>
+  <script src="contact.js"></script>
+</body>
+</html>

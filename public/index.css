@@ -1,0 +1,172 @@
+/* ────────────── LANDING OVERLAY ────────────── */
+#landing {
+  position: fixed;
+  inset: 0;
+  background-color: var(--landing-gray);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+#enter-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#teapot-icon {
+  width: 120px;
+  transition: transform 0.2s ease;
+}
+
+#teapot-icon:hover {
+  transform: scale(1.1);
+}
+
+#enter-text {
+  margin-top: 8px;
+  font-size: 1rem;
+  color: var(--text-nearly-black);
+  letter-spacing: 1px;
+  text-decoration: underline;
+}
+
+.fade-out {
+  animation: fadeOut 0.4s forwards;
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* Dissolve overlay only (no scale/translate) */
+#landing.dissolve-out {
+  animation: landingDissolve 420ms ease forwards;
+  will-change: opacity, filter;
+}
+@keyframes landingDissolve {
+  from { opacity: 1; filter: blur(0); }
+  to   { opacity: 0; filter: blur(10px); visibility: hidden; }
+}
+
+/* Prevent scroll while overlay is up */
+body.no-scroll { overflow: hidden !important; }
+
+/* Avoid edge halo while blurring */
+#landing { position: fixed; inset: 0; overflow: hidden; }
+#landing::before {
+  content: "";
+  position: absolute;
+  inset: -64px;                /* extends past edges during blur */
+  background: var(--landing-gray);
+  z-index: -1;
+}
+
+
+/* ────────────── VIDEO BANNER ────────────── */
+.video-banner {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 60px);
+  margin-top: 60px;
+  overflow: hidden;
+}
+
+.banner-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+  filter: contrast(1.1) brightness(0.45);
+}
+
+.video-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  text-align: center;
+  color: #fff;
+}
+
+.video-overlay h1 {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  line-height: 1;
+  white-space: nowrap;
+  margin: 0;
+  color: orange;
+}
+
+.video-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url('Pictures/grain.png') repeat;
+  opacity: 0.15;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  z-index: 2;
+}
+
+/* ────────────── CARD GRID ────────────── */
+.card-grid {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.card {
+  position: relative;
+  flex: 1 1 calc((100% - 2rem) / 3);
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+}
+
+.card img {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card .title {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 3;
+  color: white;
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  text-transform: uppercase;
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: 12px solid white;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.card:hover::after {
+  opacity: 1;
+}

@@ -1,0 +1,84 @@
+/* ----- CONTACT ---- */
+.contact-section {
+  padding: 4rem 2rem;
+  background-color: var(--accent-warm);
+  color: var(--text-nearly-black);
+  font-family: var(--font-body);
+}
+
+.contact-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3rem;
+  align-items: flex-start;
+}
+
+.contact-main {
+  flex: 1 1 60%;
+}
+
+.contact-main h1 {
+  font-family: var(--font-heading);
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.contact-main p {
+  font-size: 1rem;
+  margin-bottom: 2rem;
+}
+
+.contact-form label {
+  display: block;
+  margin: 1rem 0 0.25rem;
+  font-weight: 600;
+}
+
+.contact-form input,
+.contact-form textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-light-gray);
+  border-radius: 0.5rem;
+  background-color: var(--bg-cream);
+  font-size: 1rem;
+}
+
+.contact-form button {
+  margin-top: 1.5rem;
+  padding: 0.75rem 2rem;
+  background-color: var(--accent-warm);
+  border: none;
+  color: white;
+  border-radius: 0.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  border: 2px solid #fff;
+}
+
+.contact-form button:hover {
+  background-color: #bda87e;
+}
+
+.contact-sidebar {
+  flex: 1 1 30%;
+  background-color: var(--bg-cream);
+  padding: 2rem;
+  border: 2px solid var(--accent-warm);
+  border-radius: 1.5rem;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.contact-sidebar h2 {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.contact-sidebar p {
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
