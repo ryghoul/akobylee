@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 // Your public site base URL (set in Render env):
 //   PRODUCTION: PUBLIC_BASE_URL=https://akobylee.onrender.com
 //   LOCAL:      PUBLIC_BASE_URL=http://localhost:3000
-const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://akobylee.onrender.com';
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://localhost:3000';
 
 // ───────── MIDDLEWARE ─────────
 app.use(cors({
