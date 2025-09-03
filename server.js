@@ -17,18 +17,6 @@ fs.access(successPath, fs.constants.R_OK, (err) => {
   console.log(err ? '[MISSING] public/success.html not readable' : '[OK] public/success.html found');
 });
 
-const path = require('path');
-
-// Serve static from /public
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Explicit routes (optional but helps if something else intercepts)
-app.get('/success.html', (_req, res) =>
-  res.sendFile(path.join(__dirname, 'public', 'success.html'))
-);
-app.get('/success', (_req, res) =>
-  res.sendFile(path.join(__dirname, 'public', 'success.html'))
-);
 
 
 // ───────── APP / CONFIG ─────────
