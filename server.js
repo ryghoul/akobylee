@@ -7,60 +7,18 @@ const cors = require('cors');
 const nodemailer = require('nodemailer');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-// ───────── APP / CONFIG ─────────
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Where your static files live
+// ───────── CONFIG ─────────
 const STATIC_ROOT = path.join(__dirname, 'public');
-const SUCCESS_PATH = path.join(STATIC_ROOT, 'success.html');
-
-// Public site domain that Stripe should redirect to (must be a full URL)
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'http://localhost:3000';
-
-// Optional: comma-separated origins, e.g. "https://akobylee.onrender.com,http://localhost:3000"
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://akobylee.onrender.com,http://localhost:3000')
-  .split(',')
-  .map(s => s.trim());
+  .split(',').map(s => s.trim());
 
-// Optional debug toggle
-const DEBUG = (process.env.DEBUG_STATIC || 'false').toLowerCase() === 'true';
-
-// ───────── SANITY LOGS (helpful in Render logs) ─────────
-console.log('[PUBLIC_BASE_URL]', PUBLIC_BASE_URL);
-console.log('[STATIC ROOT]', STATIC_ROOT);
-fs.access(SUCCESS_PATH, fs.constants.R_OK, (err) => {
-  console.log(err ? '[MISSING] public/success.html NOT FOUND' : '[OK] public/success.html FOUND');
-});
-
-// ───────── MIDDLEWARE ─────────
-app.use(cors({ origin: ALLOWED_ORIGINS }));
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
-
-// Serve static FIRST
-app.use(express.static(STATIC_ROOT));
-
-// Nice direct routes (belt & suspenders)
-app.get('/success.html', (_req, res) => res.sendFile(SUCCESS_PATH));
-app.get('/success', (_req, res) => res.sendFile(SUCCESS_PATH));
-
-// Health
-app.get('/health', (_req, res) => res.json({ ok: true }));
-
-// Optional debug endpoint to verify what's deployed
-if (DEBUG) {
-  app.get('/debug/where-am-i', (_req, res) => {
-    let list;
-    try { list = fs.readdirSync(STATIC_ROOT); } catch { list = ['<public not found>']; }
-    res.json({ __dirname, STATIC_ROOT, containsSuccess: fs.existsSync(SUCCESS_PATH), publicList: list });
-  });
-}
-
-// ───────── EMAIL (Nodemailer) ─────────
-const EMAIL_USER = process.env.EMAIL_USER;               // e.g., napppy.lee@gmail.com
-const EMAIL_APP_PASSWORD = process.env.EMAIL_APP_PASSWORD; // Gmail App Password
-
+// Email creds (use Gmail App Password or SMTP you prefer)
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_APP_PASSWORD = process.env.EMAIL_APP_PASSWORD;
 function makeTransporter() {
   return nodemailer.createTransport({
     service: 'gmail',
@@ -68,20 +26,109 @@ function makeTransporter() {
   });
 }
 
-// ───────── ROUTES ─────────
+// ───────── WEBHOOK (must use raw body & be BEFORE express.json) ─────────
+app.post('/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET; // set this in Render
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+  } catch (err) {
+    console.error('⚠️  Webhook signature verification failed:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  try {
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+
+      // Pull full details for line items & customer
+      const fullSession = await stripe.checkout.sessions.retrieve(session.id, {
+        expand: ['line_items', 'customer_details']
+      });
+
+      const items = fullSession.line_items?.data || [];
+      const customerEmail = fullSession.customer_details?.email || session.customer_email;
+      const name = fullSession.customer_details?.name || 'Customer';
+      const amountTotal = (fullSession.amount_total ?? 0) / 100;
+      const currency = (fullSession.currency || 'usd').toUpperCase();
+
+      // Build a simple text receipt
+      const list = items.map(i => {
+        const unit = (i.price?.unit_amount ?? 0) / 100;
+        return `• ${i.description} — ${i.quantity} × $${unit.toFixed(2)}`;
+      }).join('\n');
+
+      const receiptText =
+`Thanks for your order, ${name}!
+
+Order Summary
+${list || '(no items?)'}
+
+Total: $${amountTotal.toFixed(2)} ${currency}
+
+We’ll email you if there are any updates.
+— AKO by Lee`;
+
+      const transporter = makeTransporter();
+
+      // Send to customer (if we have an email)
+      if (customerEmail) {
+        await transporter.sendMail({
+          from: EMAIL_USER,
+          to: customerEmail,
+          subject: 'AKO by Lee — Order Confirmation',
+          text: receiptText
+        });
+      }
+
+      // Send to admin
+      await transporter.sendMail({
+        from: EMAIL_USER,
+        to: EMAIL_USER,
+        subject: `New Order — ${customerEmail || name}`,
+        text:
+`Checkout Session: ${session.id}
+Email: ${customerEmail || 'N/A'}
+Name: ${name}
+Total: $${amountTotal.toFixed(2)} ${currency}
+
+Items:
+${list || '(no items?)'}`
+      });
+    }
+
+    res.json({ received: true });
+  } catch (err) {
+    console.error('Webhook handler error:', err);
+    res.status(500).send('Webhook handler failed');
+  }
+});
+
+// ───────── MIDDLEWARE (after webhook) ─────────
+app.use(cors({ origin: ALLOWED_ORIGINS }));
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+app.use(express.static(STATIC_ROOT));
+
+// Optional health/debug
+app.get('/health', (_req, res) => res.json({ ok: true }));
+app.get('/debug/public-list', (_req, res) => {
+  let list; try { list = fs.readdirSync(STATIC_ROOT); } catch { list = ['<missing public/>']; }
+  res.json({ STATIC_ROOT, list });
+});
+
+// ───────── CONTACT / RESERVATION ─────────
 app.post('/reserve', async (req, res) => {
   const { name, email, date, time, partySize, notes } = req.body || {};
   if (!name || !email || !date || !time || !partySize) {
     return res.status(400).json({ message: 'Missing required reservation fields.' });
   }
-
   try {
     const t = makeTransporter();
-
     await t.sendMail({
-      from: EMAIL_USER,
-      replyTo: email,
-      to: EMAIL_USER,
+      from: EMAIL_USER, replyTo: email, to: EMAIL_USER,
       subject: `New Reservation from ${name}`,
       text: `Name: ${name}
 Email: ${email}
@@ -90,26 +137,22 @@ Time: ${time}
 Party Size: ${partySize}
 Notes: ${notes || 'None'}`
     });
-
     await t.sendMail({
-      from: EMAIL_USER,
-      to: email,
-      subject: 'AKO Reservation Confirmation',
+      from: EMAIL_USER, to: email, subject: 'AKO Reservation Confirmation',
       text: `Hi ${name},
 
 Thanks for reserving with AKO by Lee!
 
-📅 Date: ${date}
-⏰ Time: ${time}
-👥 Guests: ${partySize}
-📝 Notes: ${notes || 'None'}
+📅 ${date}
+⏰ ${time}
+👥 ${partySize}
+📝 ${notes || 'None'}
 
-– AKO by Lee Team`
+— AKO by Lee Team`
     });
-
     res.json({ message: 'Reservation submitted and confirmation sent!' });
-  } catch (err) {
-    console.error('Email error:', err);
+  } catch (e) {
+    console.error('Email error:', e);
     res.status(500).json({ message: 'Email error.' });
   }
 });
@@ -119,26 +162,23 @@ app.post('/contact', async (req, res) => {
   if (!name || !email || !message) {
     return res.status(400).json({ message: 'Missing required contact fields.' });
   }
-
   try {
     const t = makeTransporter();
     await t.sendMail({
-      from: EMAIL_USER,
-      replyTo: email,
-      to: EMAIL_USER,
+      from: EMAIL_USER, replyTo: email, to: EMAIL_USER,
       subject: `New Message from ${name}`,
       text: `Name: ${name}
 Email: ${email}
 Message: ${message}`
     });
-
     res.json({ message: 'Message sent successfully!' });
-  } catch (err) {
-    console.error('Email error:', err);
+  } catch (e) {
+    console.error('Email error:', e);
     res.status(500).json({ message: 'Failed to send message.' });
   }
 });
 
+// ───────── STRIPE CHECKOUT ─────────
 app.post('/create-checkout-session', async (req, res) => {
   try {
     const { items = [], customer } = req.body || {};
@@ -156,17 +196,17 @@ app.post('/create-checkout-session', async (req, res) => {
       adjustable_quantity: { enabled: true, minimum: 1, maximum: 10 },
     }));
 
-    const successUrl = `${PUBLIC_BASE_URL}/success.html?session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl  = `${PUBLIC_BASE_URL}/shop.html`;
-    console.log('[CHECKOUT URLS]', { successUrl, cancelUrl });
+    // Redirect back to the shop for both success and cancel
+    const returnUrl = `${PUBLIC_BASE_URL}/shop.html`;
+    console.log('[CHECKOUT URLS]', { returnUrl });
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items,
       customer_email: customer?.email,
       shipping_address_collection: { allowed_countries: ['US','CA','GB','AU','JP','DE','FR','MX','SG'] },
-      success_url: successUrl,
-      cancel_url:  cancelUrl,
+      success_url: returnUrl + '?paid=1&session_id={CHECKOUT_SESSION_ID}',
+      cancel_url:  returnUrl + '?canceled=1',
       // automatic_tax: { enabled: true },
     });
 
