@@ -1,56 +1,95 @@
 // ───────── IMPORTS ─────────
-require('dotenv').config();                // load .env variables
+require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
-// You can drop body-parser; express has built-in JSON/urlencoded parsers
-// const bodyParser = require('body-parser');
-
-// ✅ UNCOMMENT & INSTALL STRIPE
-// npm i stripe
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-// ───────── INIT APP ─────────
+// ───────── APP / CONFIG ─────────
 const app = express();
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => console.log(`Listening on ${PORT}`));
+
+// Your public site base URL (set in Render env):
+//   PRODUCTION: PUBLIC_BASE_URL=https://akobylee.onrender.com
+//   LOCAL:      PUBLIC_BASE_URL=http://localhost:3000
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://akobylee.onrender.com';
+
 // ───────── MIDDLEWARE ─────────
 app.use(cors({
   origin: [
-    'https://akobylee.onrender.com/'  // <-- add your real domain when deployed
+    'https://akobylee.onrender.com',
+    'http://localhost:3000'
   ]
 }));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ───────── EMAIL (Nodemailer) CONFIG ─────────
+// Rotate your app password and keep it in env!
+const EMAIL_USER = process.env.EMAIL_USER;           // e.g. napppy.lee@gmail.com
+const EMAIL_PASS = process.env.EMAIL_APP_PASSWORD;   // Gmail app password
+
+function makeTransporter() {
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: EMAIL_USER, pass: EMAIL_PASS }
+  });
+}
+
+// ───────── ROUTES ─────────
+
+// Basic health check
+app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// Serve success page via nice route (works even if you change file paths)
+app.get('/success', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'success.html'));
+});
 
 // ───────── RESERVATION ROUTE ─────────
 app.post('/reserve', async (req, res) => {
   const { name, email, date, time, partySize, notes } = req.body;
 
-  // ⚠️ Consider moving these creds to env vars too
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: 'napppy.lee@gmail.com', pass: 'prjvtfjoffeaqkpu' }
-  });
+  if (!name || !email || !date || !time || !partySize) {
+    return res.status(400).json({ message: 'Missing required reservation fields.' });
+  }
 
-  const mailOptions = {
-    from: email,
-    to: 'napppy.lee@gmail.com',
+  const transporter = makeTransporter();
+
+  const adminMail = {
+    from: EMAIL_USER,
+    replyTo: email,
+    to: EMAIL_USER,
     subject: `New Reservation from ${name}`,
-    text: `Name: ${name}\nEmail: ${email}\nDate: ${date}\nTime: ${time}\nParty Size: ${partySize}\nNotes: ${notes || "None"}`
+    text: `Name: ${name}
+Email: ${email}
+Date: ${date}
+Time: ${time}
+Party Size: ${partySize}
+Notes: ${notes || 'None'}`
   };
 
-  const confirmationMailOptions = {
-    from: 'napppy.lee@gmail.com',
+  const confirmationMail = {
+    from: EMAIL_USER,
     to: email,
     subject: 'AKO Reservation Confirmation',
-    text: `Hi ${name},\n\nThanks for reserving with AKO by Lee!\n\n📅 Date: ${date}\n⏰ Time: ${time}\n👥 Guests: ${partySize}\n📝 Notes: ${notes || "None"}\n\n– AKO by Lee Team`
+    text: `Hi ${name},
+
+Thanks for reserving with AKO by Lee!
+
+📅 Date: ${date}
+⏰ Time: ${time}
+👥 Guests: ${partySize}
+📝 Notes: ${notes || 'None'}
+
+– AKO by Lee Team`
   };
 
   try {
-    await transporter.sendMail(mailOptions);
-    await transporter.sendMail(confirmationMailOptions);
+    await transporter.sendMail(adminMail);
+    await transporter.sendMail(confirmationMail);
     res.status(200).json({ message: 'Reservation submitted and confirmation sent!' });
   } catch (err) {
     console.error('Email error:', err);
@@ -62,20 +101,24 @@ app.post('/reserve', async (req, res) => {
 app.post('/contact', async (req, res) => {
   const { name, email, message } = req.body;
 
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: 'napppy.lee@gmail.com', pass: 'prjvtfjoffeaqkpu' }
-  });
+  if (!name || !email || !message) {
+    return res.status(400).json({ message: 'Missing required contact fields.' });
+  }
 
-  const mailOptions = {
-    from: email,
-    to: 'napppy.lee@gmail.com',
+  const transporter = makeTransporter();
+
+  const mail = {
+    from: EMAIL_USER,
+    replyTo: email,
+    to: EMAIL_USER,
     subject: `New Message from ${name}`,
-    text: `Name: ${name}\nEmail: ${email}\nMessage: ${message}`
+    text: `Name: ${name}
+Email: ${email}
+Message: ${message}`
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    await transporter.sendMail(mail);
     res.status(200).json({ message: 'Message sent successfully!' });
   } catch (err) {
     console.error('Email error:', err);
@@ -92,32 +135,24 @@ app.post('/create-checkout-session', async (req, res) => {
       return res.status(400).json({ error: 'No items in request.' });
     }
 
-    // (Optional) simple allowlist to avoid price tampering from client
-    // const ALLOW = { 'SINESIS HOODIES': 4500, 'TEA SHIRTS': 2500, 'FLOWER BANDANA': 1500, 'STICKY RICE': 800, 'LYCHEE "INFUSED" BLACK TEA': 800 };
-
-    const line_items = items.map(i => {
-      // if (!ALLOW[i.name] || i.price > ALLOW[i.name]) throw new Error('Invalid item/price');
-      return {
-        price_data: {
-          currency: 'usd',
-          product_data: { name: i.name },
-          unit_amount: i.price, // cents
-        },
-        quantity: i.quantity,
-        adjustable_quantity: { enabled: true, minimum: 1, maximum: 10 },
-      };
-    });
+    const line_items = items.map(i => ({
+      price_data: {
+        currency: 'usd',
+        product_data: { name: i.name },
+        unit_amount: i.price, // cents
+      },
+      quantity: i.quantity,
+      adjustable_quantity: { enabled: true, minimum: 1, maximum: 10 },
+    }));
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items,
-      // If you want Stripe to prefill contact/shipping:
       customer_email: customer?.email,
       shipping_address_collection: { allowed_countries: ['US', 'CA', 'GB', 'AU', 'JP', 'DE', 'FR', 'MX', 'SG'] },
-
-      success_url: 'http://akobylee.onrender.com/success.html?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: 'http://akobylee.onrender.com/shop.html',
-      // automatic_tax: { enabled: true }, // if configured in Dashboard
+      success_url: `${PUBLIC_BASE_URL}/success.html?session_id={CHECKOUT_SESSION_ID}`, // or `${PUBLIC_BASE_URL}/success?...`
+      cancel_url: `${PUBLIC_BASE_URL}/shop.html`,
+      // automatic_tax: { enabled: true },
     });
 
     return res.json({ url: session.url });
@@ -128,7 +163,7 @@ app.post('/create-checkout-session', async (req, res) => {
   }
 });
 
-// ───────── START SERVER ─────────
-app.listen(PORT, () => {
+// ───────── START SERVER (single listen) ─────────
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
