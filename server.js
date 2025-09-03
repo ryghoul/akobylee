@@ -17,9 +17,6 @@ app.listen(PORT, '0.0.0.0', () => console.log(`Listening on ${PORT}`));
 // ───────── MIDDLEWARE ─────────
 app.use(cors({
   origin: [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:5500',
     'https://akobylee.onrender.com/'  // <-- add your real domain when deployed
   ]
 }));
