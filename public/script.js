@@ -410,6 +410,28 @@ function buildCustomerPayload() {
     cartItemsContainer.appendChild(div);
   }
 
+    // ─── CHECKOUT ─────────────────────────────────────────
+  const url = new URL(window.location.href);
+  const paid = url.searchParams.get('paid');
+  const sessionId = url.searchParams.get('session_id');
+
+  if (paid === '1' && sessionId) {
+    fetch(`/api/confirm-order?session_id=${encodeURIComponent(sessionId)}`)
+      .then(r => r.json())
+      .then(() => {
+        try { localStorage.removeItem('cart'); } catch {}
+        // Optional: show a "Thanks!" message already on this page
+      })
+      .catch(console.error)
+      .finally(() => {
+        // Clean the URL so refresh doesn't re-trigger
+        url.searchParams.delete('paid');
+        url.searchParams.delete('session_id');
+        history.replaceState({}, '', url.pathname);
+      });
+  }
+
+
   // ─── TOAST ─────────────────────────────────────────
   function showToast(message = 'Added to cart!') {
     const toast = document.getElementById('cart-toast');
