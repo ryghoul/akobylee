@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
 <!-- ── NAVBAR ─────────────────────────────────────────────────── -->
     <nav id="navbar">
 
@@ -89,36 +90,64 @@
 </section>
 
 <!-- ── SHOP ─────────────────────────────────────── -->
-<section class="product-detail" id="shop-items">
+<section class="product-detail product-detail--compact" id="shop-items">
 
-  <!-- HOODIES -->
+  <!--------------------- NEW ARRIVALS -------------------->
+
+  <!--------------------- HOODIE -------------------->
   <div class="product-card">
     <div class="product-image">
-      <img src="Pictures/merch/hoodie1.JPG" alt="Sinensis Hoodies">
+
+      <!-- IMAGE GALLERY -->
+  <div class="product-gallery" data-product="hoodie">
+  <button class="pg-nav pg-prev" aria-label="Previous">‹</button>
+
+  <!-- NEW: viewport + track -->
+  <div class="pg-viewport">
+    <div class="pg-track">
+      <!-- Porcelain Blue -->
+      <img src="Pictures/merch/hoodieb1.JPG" alt="Hoodie - Porcelain Blue 1" data-variant="Porcelain Blue">
+      <img src="Pictures/merch/hoodieb2.JPG" alt="Hoodie - Porcelain Blue 2" data-variant="Porcelain Blue">
+      <!-- Charcoal Grey -->
+      <img src="Pictures/merch/hoodiegr1.jpeg" alt="Hoodie - Charcoal Grey 1" data-variant="Charcoal Grey">
+      <img src="Pictures/merch/hoodiegr2.jpeg" alt="Hoodie - Charcoal Grey 2" data-variant="Charcoal Grey">
+      <!-- Forest Green -->
+      <img src="Pictures/merch/hoodiegrn1.jpeg" alt="Hoodie - Forest Green 1" data-variant="Forest Green">
+    </div>
+  </div>
+
+  <button class="pg-nav pg-next" aria-label="Next">›</button>
+</div>
+
     </div>
     <div class="product-info">
       <h1>SINESIS HOODIES</h1>
       <div class="desc-specs-wrapper">
+
         <div class="short-desc">
           An imperfect asymmetrical imprint.<br>
           Wabi-sabi as they say.<br>
           The perfect relaxed fit for the tea season.
         </div>
+
         <ul class="product-specs">
           <li>9.4 oz</li>
           <li>80% cotton / 20% recycled polyester CVC fleece</li>
           <li>mid-weight, pre-shrunken</li>
           <li>oversized relaxed fit</li>
         </ul>
+
       </div>
       <div class="purchase-box">
         <div class="price-tag">$45</div>
         <label>Color
-          <select>
-            <option>Porcelain Blue</option>
-            <option>Charcoal Grey</option>
-            <option>Forest Green</option>
+          <select class="variant-select" data-product="hoodie">
+           <option>Porcelain Blue</option>
+           <option>Charcoal Grey</option>
+           <option>Forest Green</option>
           </select>
+        </label>
+
         </label>
         <label>Size
           <select>
@@ -132,11 +161,29 @@
     </div>
   </div>
 
-  <!-- SHIRTS -->
+  <!--------------------- SHIRTS -------------------->
   <div class="product-card">
     <div class="product-image">
-      <img src="Pictures/merch/shirt1.JPG" alt="Tea Shirts">
+      <!-- IMAGE GALLERY -->
+  <div class="product-gallery" data-product="shirt">
+  <button class="pg-nav pg-prev" aria-label="Previous">‹</button>
+
+  <!-- NEW: viewport + track -->
+  <div class="pg-viewport">
+    <div class="pg-track">
+      <!-- Black -->
+      <img src="Pictures/merch/shirt1.JPG" alt="Shirt - Black" data-variant="Black">
+      <!-- White -->
+      <img src="Pictures/merch/shirt2.JPG" alt="Shirt - White" data-variant="White">
+      <!-- Green -->
+      <img src="Pictures/merch/shirt3.JPG" alt="Shirt - FNF" data-variant="FNF">
     </div>
+  </div>
+
+  <button class="pg-nav pg-next" aria-label="Next">›</button>
+</div>
+    </div>
+    
     <div class="product-info">
       <h1>TEA SHIRTS</h1>
       <div class="desc-specs-wrapper">
@@ -154,13 +201,15 @@
       </div>
       <div class="purchase-box">
         <div class="price-tag">$25</div>
+
         <label>Color
-          <select>
-            <option>Black</option>
-            <option>White</option>
-            <option>FNF</option>
+          <select class="variant-select" data-product="shirt">
+           <option>Black</option>
+           <option>White</option>
+           <option>FNF</option>
           </select>
         </label>
+
         <label>Size
           <select>
             <option>XS</option>
@@ -175,11 +224,147 @@
     </div>
   </div>
 
+    <!--------------------- SPLASH SHIRTS -------------------->
+  <div class="product-card">
+    <div class="product-image">
+
+      <!-- IMAGE GALLERY -->
+  <div class="product-gallery" data-product="shirt - new">
+  <button class="pg-nav pg-prev" aria-label="Previous">‹</button>
+
+  <!-- NEW: viewport + track -->
+  <div class="pg-viewport">
+    <div class="pg-track">
+      <!-- Black -->
+      <img src="Pictures/merch/shirt4.png" alt="Shirt - AKO" data-variant="AKO Splash">
+      <!-- White -->
+      <img src="Pictures/merch/shirt5.png" alt="Shirt - SPLASH" data-variant="Green Splash">
+    </div>
+  </div>
+
+  <button class="pg-nav pg-next" aria-label="Next">›</button>
+</div>
+    </div>
+    
+    <div class="product-info">
+      <h1>SPLASH SHIRTS - NEW ARRIVALS</h1>
+      <div class="desc-specs-wrapper">
+        <div class="short-desc">
+          The starts of something, our signature, our stamp.<br>
+          Inspired by chinese stamps, we chose to use.<br>
+          the flower of the cammellia sensis (the tea plant) to represent AKO.
+        </div>
+        <ul class="product-specs">
+          <li>6.5 oz</li>
+          <li>100% combined cotton</li>
+          <li>2" length reduction true to size,</li>
+          <li>best worn fitted</li>
+        </ul>
+      </div>
+      <div class="purchase-box">
+        <div class="price-tag">$25</div>
+
+        <label>Color
+          <select class="variant-select" data-product="shirt - new">
+           <option>AKO Splash</option>
+           <option>Green Splash</option>
+          </select>
+        </label>
+
+        <label>Size
+          <select>
+            <option>XS</option>
+            <option>S</option>
+            <option>M</option>
+            <option>L</option>
+            <option>XL</option>
+          </select>
+        </label>
+        <button class="btn-outline add-to-cart">Add to Cart</button>
+      </div>
+    </div>
+  </div>
+
+   <!-- TOTE BAG -->
+  <div class="product-card">
+    <div class="product-image">
+
+            <!-- IMAGE GALLERY -->
+  <div class="product-gallery" data-product="tote">
+  <button class="pg-nav pg-prev" aria-label="Previous">‹</button>
+
+  <!-- NEW: viewport + track -->
+  <div class="pg-viewport">
+    <div class="pg-track">
+      <!-- Black -->
+      <img src="Pictures/merch/blacktote.png" alt="Black Tote" data-variant="Black">
+      <!-- White -->
+      <img src="Pictures/merch/greentote.png" alt="Green Tote" data-variant="Green">
+    </div>
+  </div>
+  <button class="pg-nav pg-next" aria-label="Next">›</button>
+</div>
+    </div>
+
+    <div class="product-info">
+      <h1>TEA TOTE - NEW ARRIVALS</h1>
+      <div class="desc-specs-wrapper">
+        <div class="short-desc">
+          The starts of something, our signature, our stamp.<br>
+          Inspired by chinese stamps, we chose to use.<br>
+          the flower of the cammellia sensis (the tea plant) to represent AKO.
+        </div>
+        <ul class="product-specs">
+          <li>6.5 oz</li>
+          <li>100% combined cotton</li>
+          <li>2" length reduction true to size,</li>
+          <li>best worn fitted</li>
+        </ul>
+      </div>
+
+      <div class="purchase-box">
+        <div class="price-tag">$25</div>
+        <label>Color
+          <select class="variant-select" data-product="tote">
+           <option>Black</option>
+           <option>Green</option>
+          </select>
+        </label>
+        <button class="btn-outline add-to-cart">Add to Cart</button>
+      </div>
+    </div>
+  </div>
+
   <!-- BANDANAS -->
   <div class="product-card">
     <div class="product-image">
-      <img src="Pictures/merch/bandana1.JPG" alt="Bandana">
+
+      <!-- IMAGE GALLERY -->
+  <div class="product-gallery" data-product="bandana">
+  <button class="pg-nav pg-prev" aria-label="Previous">‹</button>
+
+  <!-- NEW: viewport + track -->
+  <div class="pg-viewport">
+    <div class="pg-track">
+      <!-- Option 1 -->
+      <img src="Pictures/merch/bandana1.1.JPG" alt="Green Bandana" data-variant="Green Tea">
+      <img src="Pictures/merch/bandana1.2.JPG" alt="Green Bandana" data-variant="Green Tea">
+      <img src="Pictures/merch/bandana1.3.JPG" alt="Green Bandana" data-variant="Green Tea">
+      <img src="Pictures/merch/bandana1.4.JPG" alt="Green Bandana" data-variant="Green Tea">
+      <img src="Pictures/merch/bandana1.5.JPG" alt="Green Bandana" data-variant="Green Tea">
+      
+      <!-- Option 2 -->
+      <img src="Pictures/merch/bandana2.png" alt="Tea" data-variant="Tea">
+      <!-- Option 3 -->
+      <img src="Pictures/merch/bandana3.png" alt="Matcha" data-variant="Matcha">
+      <!-- White -->
+      <img src="Pictures/merch/bandana4.png" alt="AKO Print" data-variant="AKO Print">
     </div>
+  </div>
+  <button class="pg-nav pg-next" aria-label="Next">›</button>
+</div>
+    </div>
+
     <div class="product-info">
       <h1>FLOWER BANDANA</h1>
       <div class="desc-specs-wrapper">
@@ -194,6 +379,14 @@
       </div>
       <div class="purchase-box">
         <div class="price-tag">$15</div>
+          <label>Color
+          <select class="variant-select" data-product="bandana">
+           <option>Green Tea</option>
+           <option>Tea</option>
+           <option>Matcha</option>
+           <option>AKO Print</option>
+          </select>
+        </label>
         <button class="btn-outline add-to-cart">Add to Cart</button>
       </div>
     </div>
@@ -202,7 +395,23 @@
   <!-- STICKY RICE -->
   <div class="product-card">
     <div class="product-image">
-      <img src="Pictures/merch/stickyrice.jpg" alt="Sticky Rice">
+
+       <!-- IMAGE GALLERY -->
+  <div class="product-gallery" data-product="stickyrice">
+  <button class="pg-nav pg-prev" aria-label="Previous">‹</button>
+
+  <!-- NEW: viewport + track -->
+  <div class="pg-viewport">
+    <div class="pg-track">
+<!-- STICKY RICE -->
+      <img src="Pictures/merch/stickyrice.jpg" alt="STICKY RICE" data-variant="STICKY RICE">
+      <img src="Pictures/merch/stickyrice2.jpg" alt="STICKY RICE" data-variant="STICKY RICE">
+      <img src="Pictures/merch/stickyrice3.jpg" alt="STICKY RICE" data-variant="STICKY RICE">
+    </div>
+  </div>
+
+  <button class="pg-nav pg-next" aria-label="Next">›</button>
+</div>
     </div>
     <div class="product-info">
       <h1>STICKY RICE</h1>
@@ -230,7 +439,25 @@
   <!-- LYCHEE TEA -->
   <div class="product-card">
     <div class="product-image">
-      <img src="Pictures/merch/LIBT.png" alt="Lychee Infused Black Tea">
+
+      <!-- IMAGE GALLERY -->
+  <div class="product-gallery" data-product="lychee">
+  <button class="pg-nav pg-prev" aria-label="Previous">‹</button>
+
+  <!-- NEW: viewport + track -->
+  <div class="pg-viewport">
+    <div class="pg-track">
+
+<!-- LYCHEE TEA -->
+      <img src="Pictures/merch/lychee1.png" alt="lychee" data-variant="lychee">
+      <img src="Pictures/merch/lychee2.png" alt="lychee" data-variant="lychee">
+      <img src="Pictures/merch/lychee3.png" alt="lychee" data-variant="lychee">
+      <img src="Pictures/merch/lychee4.jpg" alt="lychee" data-variant="lychee">
+    </div>
+  </div>
+
+  <button class="pg-nav pg-next" aria-label="Next">›</button>
+</div>
     </div>
     <div class="product-info">
       <h1>LYCHEE "INFUSED" BLACK TEA</h1>
@@ -311,5 +538,6 @@
 
   <script src="script.js"></script>
   <script src="contact.js"></script>
+  <script src="shop.js"></script>
 </body>
 </html>

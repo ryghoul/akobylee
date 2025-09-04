@@ -1,4 +1,6 @@
-/* ── SHOP-PIC GRID ───────────────────────────────────────────────── */
+/* =========================================================
+   SHOP HERO (3-panel grid with video + overlay)
+   ========================================================= */
 .shop-pic {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -11,56 +13,36 @@
   background-position: center;
 }
 
-/* ── PANEL BACKGROUNDS ───────────────────────────────────────────────── */
 .shop-pic .panel-1 { background-image: url('Pictures/shop3/shop1.JPG'); }
+.shop-pic .panel-2 { background-image: none; } /* center uses video */
+.shop-pic .panel-3 { background-image: url('Pictures/shop3/shop3.jpeg'); }
 
-/* remove the old background-image rule for the center panel */
-.shop-pic .panel-2 {
-  background-image: none;
-}
-
-/* make the video fill the panel */
-.shop-pic .video-panel {
-  position: relative;  /* already set on .shop-panel, but just in case */
-}
+/* video fills middle panel */
+.shop-pic .video-panel { position: relative; }
 .shop-pic .video-panel video.shop-video {
-  position: absolute;
-  top: 0; 
-  left: 0;
-  width: 100%;
-  height: 100%;
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
   object-fit: cover;
   z-index: 1;
 }
 
-/* keep your overlay on top of the video */
-.shop-pic .video-panel .shop-overlay {
-  position: relative;
-  z-index: 2;
-}
-
-
-.shop-pic .panel-3 { background-image: url('Pictures/shop3/shop3.jpeg'); }
-
-/* overlay in the center panel */
+/* overlay content on top of video */
+.shop-pic .video-panel .shop-overlay { position: relative; z-index: 2; }
 .shop-pic .shop-overlay {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
   color: #fff;
   max-width: 80%;
 }
 
-/* icon above the title (you still used class="hero-icon", so keep selector) */
 .shop-pic .hero-icon {
   width: 40px;
   margin-bottom: 1rem;
   opacity: 0.9;
 }
 
-/* heading & text */
 .shop-pic .shop-overlay h1 {
   font-family: var(--font-heading);
   font-size: 3rem;
@@ -74,24 +56,11 @@
   line-height: 1.4;
 }
 
-/* ── SPINNING FLOWER ───────────────────────────────────────────────── */
+/* spinning flower */
+@keyframes spin-clockwise { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.spin { animation: spin-clockwise 5s linear infinite; transform-origin: 50% 50%; display: inline-block; }
 
-/* 1) define the animation */
-@keyframes spin-clockwise {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-/* 2) apply it to your image */
-.spin {
-  /* spin once every 5 seconds—you can adjust the duration */
-  animation: spin-clockwise 5s linear infinite;
-  /* make sure it pivots around its center */
-  transform-origin: 50% 50%;
-  display: inline-block; /* ensures transform works cleanly on img */
-}
-
-/* button */
+/* hero CTA button (white outline) */
 .shop-pic .btn-outline {
   display: inline-block;
   padding: 0.75rem 1.5rem;
@@ -104,20 +73,26 @@
   letter-spacing: 0.05em;
   transition: background 0.3s, color 0.3s;
 }
-.shop-pic .btn-outline:hover {
-  background: rgba(255,255,255,0.2);
-  color: var(--text-nearly-black);
+.shop-pic .btn-outline:hover { background: rgba(255,255,255,0.2); color: var(--text-nearly-black); }
+
+/* =========================================================
+   PRODUCT SECTION (stack of product cards)
+   ========================================================= */
+.product-detail {
+  display: flex;               /* stacked cards */
+  flex-direction: column;
+  gap: 5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 4rem 1rem;
 }
 
-/* ── PRODUCT DETAIL LAYOUT ─────────────────────────────────────── */
-.product-detail {
+/* each product row: image + info */
+.product-card {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4rem;
   align-items: start;
-  padding: 4rem 1rem;
-  max-width: 1200px;
-  margin: 0 auto;
 }
 
 .product-image img {
@@ -127,13 +102,8 @@
   object-fit: cover;
 }
 
-/* ── INFO COLUMN ───────────────────────────────────────────────── */
-.product-info {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
+/* info column */
+.product-info { display: flex; flex-direction: column; gap: 1.5rem; }
 .product-info h1 {
   font-family: var(--font-heading);
   font-size: 3rem;
@@ -141,29 +111,32 @@
   line-height: 1.1;
 }
 
+/* description + specs side-by-side (wraps on mobile) */
+.desc-specs-wrapper { display: flex; gap: 2rem; align-items: flex-start; flex-wrap: wrap; }
+
+/* Left: description */
 .short-desc {
+  flex: 2;
   font-family: var(--font-body);
+  font-size: 0.95rem;
+  line-height: 1.5;
   color: var(--text-dark-gray);
-  line-height: 1.4;
 }
 
-.product-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 5rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 4rem 1rem;
+/* Right: specs */
+.product-specs {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-dark-gray);
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
+.product-specs li { margin-bottom: 0.5rem; }
 
-.product-card {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4rem;
-  align-items: start;
-}
-
-/* ── PURCHASE BOX ───────────────────────────────────────────────── */
+/* purchase box */
 .purchase-box {
   background: var(--surface-light);
   border: 1px solid var(--border-light-gray);
@@ -173,28 +146,23 @@
   grid-template-rows: auto auto auto auto;
   row-gap: 1rem;
 }
-
 .price-tag {
   justify-self: end;
   font-family: var(--font-heading);
   font-size: 1.25rem;
 }
-
-.purchase-box label {
-  display: block;
-  font-family: var(--font-body);
-}
-
+.purchase-box label { display: block; font-family: var(--font-body); }
 .purchase-box select {
   width: 100%;
   padding: 0.5rem 0.75rem;
   margin-top: 0.5rem;
   border: 1px solid var(--border-light-gray);
   border-radius: 0.75rem;
-  background: white;
+  background: #fff;
   font-family: var(--font-body);
 }
 
+/* generic button (used in purchase box) */
 .btn-outline {
   padding: 0.75rem;
   border: 2px solid var(--text-nearly-black);
@@ -207,91 +175,142 @@
   text-align: center;
   transition: background 0.2s ease, transform 0.1s ease;
 }
+.btn-outline:hover { background: #BBAA7A; }
+.btn-outline:active { background: #A69464; transform: scale(0.98); }
+.btn-disabled { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
 
-/* Hover Effect */
-.btn-outline:hover {
-  background: #BBAA7A; /* slightly darker warm tone or whatever you prefer */
-}
-
-/* Clicked (Active) Effect */
-.btn-outline:active {
-  background: #A69464; /* even darker for "pressed" look */
-  transform: scale(0.98); /* optional: tiny press-down effect */
-}
-
-
-.btn-disabled {
-  opacity: 0.5;
-  pointer-events: none;
-  cursor: not-allowed;
-}
-
-
-/* ── SPECS LIST ──────────────────────────────────────────────────── */
-.product-specs {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-family: var(--font-body);
-  color: var(--text-dark-gray);
-}
-
-.product-specs li {
-  margin-bottom: 0.5rem;
-}
-
-/* ── ITEM ADDED ──────────────────────────────────────────────────── */
+/* added-to-cart toast */
 .toast {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  background: var(--text-nearly-black);
-  color: white;
+  position: fixed; bottom: 2rem; right: 2rem;
+  background: var(--text-nearly-black); color: #fff;
   padding: 1rem 1.5rem;
   border-radius: 8px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-  opacity: 0;
-  transform: translateY(20px);
+  opacity: 0; transform: translateY(20px);
   transition: opacity 0.3s ease, transform 0.3s ease;
   z-index: 1000;
 }
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.hidden { display: none; }
 
-.toast.show {
-  opacity: 1;
-  transform: translateY(0);
+/* =========================================================
+   PRODUCT IMAGE GALLERY (slide + hover-only arrows + cross-fade)
+   ========================================================= */
+.product-gallery {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/5;
+  background: #111;
+  border-radius: 12px;
+  overflow: hidden; /* keep slides inside */
 }
 
-.toast.hidden {
-  display: none;
+/* viewport/track for sliding */
+.pg-viewport {
+  position: relative;    /* needed for .pg-fader overlay */
+  width: 100%; height: 100%;
+  overflow: hidden;
+  transition: opacity 0.28s ease; /* if you also fade the viewport */
 }
+.pg-viewport.is-fading { opacity: 0; }
 
-
-.desc-specs-wrapper {
+.pg-track {
   display: flex;
-  gap: 2rem;
-  align-items: flex-start;
-  flex-wrap: wrap; /* ensures mobile stacking */
+  width: 100%; height: 100%;
+  transition: transform 0.45s ease;
+  will-change: transform;
+}
+.pg-track img {
+  flex: 0 0 100%;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  user-select: none; pointer-events: none;
 }
 
-/* Left side: description */
-.short-desc {
-  flex: 2;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  color: var(--text-dark-gray);
+/* arrows (hidden by default; show on hover) */
+.pg-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  z-index: 2;
+  border: none;
+  width: 44px; height: 44px; line-height: 44px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.45);
+  color: #fff; font-size: 26px; text-align: center;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s ease, background 0.2s ease;
+}
+.pg-prev { left: 10px; }
+.pg-next { right: 10px; }
+.pg-nav:hover { background: rgba(0,0,0,0.65); }
+.product-gallery:hover .pg-nav { opacity: 1; pointer-events: auto; }
+
+/* cross-fade overlay (used on variant change) */
+.pg-fader {
+  position: absolute; inset: 0;
+  z-index: 3;                 /* above track, below arrows */
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+.pg-fader img {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
 }
 
-/* Right side: specs */
-.product-specs {
-  flex: 1;
-  font-size: 0.85rem;
-  font-weight: 600; /* makes it bold */
-  color: var(--text-dark-gray);
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* accessibility / reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .pg-track { transition: none !important; }
+  .pg-viewport { transition: none !important; }
 }
 
-.product-specs li {
-  margin-bottom: 0.5rem;
+/* =========================================================
+   COMPACT MODE (smaller product section)
+   Add class="product-detail product-detail--compact" to the section
+   ========================================================= */
+.product-detail--compact {
+  max-width: 880px;           /* narrower overall */
+  gap: 2.4rem;                /* less vertical space between cards */
+  padding: 2.5rem 1rem;       /* tighter top/bottom */
+}
+.product-detail--compact .product-card { gap: 1.6rem; }
+
+/* typography */
+.product-detail--compact .product-info h1 { font-size: 2rem; line-height: 1.15; }
+.product-detail--compact .short-desc    { font-size: 0.88rem; line-height: 1.5; }
+.product-detail--compact .product-specs { font-size: 0.78rem; }
+
+/* desc/specs spacing */
+.product-detail--compact .desc-specs-wrapper { gap: 1rem; }
+
+/* purchase box + controls */
+.product-detail--compact .purchase-box        { padding: 0.9rem; border-radius: 0.9rem; }
+.product-detail--compact .price-tag           { font-size: 1rem; }
+.product-detail--compact .purchase-box select { padding: 0.4rem 0.55rem; font-size: 0.9rem; }
+.product-detail--compact .btn-outline         { padding: 0.55rem; font-size: 0.9rem; }
+
+/* gallery + arrows in compact */
+.product-detail--compact .product-gallery { border-radius: 10px; }
+.product-detail--compact .pg-nav {
+  width: 32px; height: 32px; line-height: 32px; font-size: 20px;
+}
+.product-detail--compact .pg-prev { left: 6px; }
+.product-detail--compact .pg-next { right: 6px; }
+
+/* toast spacing when compact */
+.product-detail--compact ~ .toast {
+  bottom: 1rem; right: 1rem; padding: 0.65rem 0.9rem; font-size: 0.9rem;
+}
+
+/* =========================================================
+   BASIC RESPONSIVE TWEAK
+   Stack image/info on narrow viewports (optional but handy)
+   ========================================================= */
+@media (max-width: 900px) {
+  .product-detail { padding: 3rem 1rem; gap: 3rem; }
+  .product-card { grid-template-columns: 1fr; gap: 1.5rem; }
+  .product-info h1 { font-size: 2.25rem; }
+  .shop-pic { height: auto; }
+  .product-detail--compact { max-width: 100%; }
 }
