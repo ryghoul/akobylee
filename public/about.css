@@ -154,7 +154,7 @@
   margin: 0 auto;
   position: relative;
   border-left: 3px solid var(--bg-gray);
-  padding-left: 2rem;
+  padding-left: 0.5rem;
 }
 
 .timeline-item {
@@ -163,11 +163,13 @@
 
 .timeline-date {
   position: absolute;
-  left: -4.5rem;
+  right: 100%;          /* push entirely to the left of the vertical line */
+  margin-right: 1rem;   /* add spacing between the text and the line */
   top: 0;
   font-weight: bold;
   font-size: 1.1rem;
   color: var(--landing-gray);
+  white-space: nowrap;  /* prevent date from wrapping */
 }
 
 .timeline-content {
