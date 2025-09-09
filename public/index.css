@@ -178,3 +178,32 @@ body.no-scroll { overflow: hidden !important; }
   line-height: 1.1;
   word-break: break-word;
 }
+
+/* ────────────── Responsive Video Overlay ────────────── */
+.video-overlay {
+  padding: 0 1rem;          /* small side padding on mobile */
+  max-width: 90%;           /* prevent text from overflowing */
+  box-sizing: border-box;
+}
+
+.video-overlay h1 {
+  font-size: clamp(1.2rem, 6vw, 3rem); /* scales between 1.2rem and 3rem */
+  line-height: 1.2;
+  white-space: normal;      /* allow wrapping on small screens */
+  margin: 0;
+  color: orange;
+}
+
+@media (max-width: 600px) {
+  .video-overlay {
+    top: auto;
+    bottom: 10%;            /* lift text higher for small screens */
+    transform: translateX(-50%);
+    text-align: center;
+  }
+
+  .video-overlay h1 {
+    font-size: clamp(1rem, 5vw, 1.6rem);
+    line-height: 1.3;
+  }
+}
