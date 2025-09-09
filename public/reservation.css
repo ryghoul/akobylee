@@ -60,3 +60,42 @@
 .reservation-form button:hover {
   background-color: #bda87e;
 }
+
+/* ==== Fullscreen reservation (Calendly) ==== */
+/* If your navbar height changes, update this value */
+:root { --nav-h: 60px; }
+
+.reservation-section {
+  padding: 0;
+  background: var(--accent-warm);
+  scroll-margin-top: calc(var(--nav-h) + 12px);
+}
+
+.reservation-container {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Fill the viewport below the fixed navbar (handles mobile address bars) */
+.reservation-container,
+.reservation-section .calendly-inline-widget {
+  height: calc(100dvh - var(--nav-h)) !important;
+  min-height: calc(100svh - var(--nav-h)) !important;
+  width: 100% !important;
+  border: 0;
+}
+
+/* Make Calendly's injected iframe stretch too */
+.reservation-section .calendly-inline-widget iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: 0;
+}
+
+/* Optional: hide heading/intro on smaller screens for true fullscreen */
+@media (max-width: 1024px) {
+  .reservation-container > h1,
+  .reservation-container > p { display: none; }
+}
