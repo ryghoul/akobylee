@@ -13,26 +13,38 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- ── NAVBAR ── -->
-  <nav id="navbar">
-    <a href="index.html?from=home" id="logo-link">
-      <img src="Pictures/ako.png" alt="AKO by Lee Logo" id="navbar-logo">
-    </a>
-    <ul id="nav-links">
-      <li><a href="shop.html">Shop</a></li>
-      <li><a href="contact.html">Contact</a></li>
-      <li><a href="menu.html">Menu</a></li>
-      <li><a href="about.html">About</a></li>
-      <li><a href="gallery.html">Gallery</a></li>
-      <li><a href="reservation.html">Reservation</a></li>
-      <li class="social-icon">
-        <a href="#" id="cart-toggle" aria-label="Cart">
-          <img src="Pictures/cart.svg" alt="" class="icon" />
-          <span id="cart-badge" class="cart-badge">0</span>
-        </a>
-      </li>
-    </ul>
-  </nav>
+<!-- ── NAVBAR ─────────────────────────────────────────────────── -->
+    <nav id="navbar">
+
+  <!-- 1. Logo on the left -->
+  <a href="index.html?from=home" id="logo-link">
+    <img src="Pictures/ako.png" alt="AKO by Lee Logo" id="navbar-logo">
+  </a>
+
+<button id="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Toggle navigation">
+  <span class="hamburger"></span>
+</button>
+
+  <!-- 2. Links centered via auto margins -->
+  <ul id="nav-links">
+    <li><a href="shop.html">Shop</a></li>
+    <li><a href="contact.html">Contact</a></li>
+    <li><a href="menu.html">Menu</a></li>
+    <li><a href="about.html">About</a></li>
+    <li><a href="gallery.html">Gallery</a></li>
+    <li><a href="reservation.html">Reservation</a></li>
+      <!-- icon links -->
+
+<li class="social-icon">
+  <a href="#" id="cart-toggle" aria-label="Cart">
+    <img src="Pictures/cart.svg" alt="" class="icon" />
+    <span id="cart-badge" class="cart-badge">0</span>
+  </a>
+</li>
+
+  </ul>
+</nav>
+
 
   <!-- CART SIDEBAR -->
   <aside id="cart-sidebar" aria-hidden="true">

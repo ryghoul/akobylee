@@ -314,3 +314,25 @@
   .shop-pic { height: auto; }
   .product-detail--compact { max-width: 100%; }
 }
+
+@media (max-width: 768px) {
+  #nav-links{
+    position: fixed;
+    top: 60px; left: 0; right: 0;
+    background: var(--text-nearly-black);
+    flex-direction: column;
+    padding: .75rem 1rem 1rem;
+    gap: .5rem;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .25s ease;
+    border-top: 0;         /* no line when closed */
+    z-index: 600;          /* above page content */
+  }
+  #nav-links.open{
+    max-height: 60vh;
+    border-top: 1px solid var(--border-light-gray);
+  }
+  #nav-toggle{ display:block; }  /* show burger on mobile */
+}
+

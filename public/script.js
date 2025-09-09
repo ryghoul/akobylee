@@ -445,6 +445,16 @@ function buildCustomerPayload() {
     }, 2000);
   }
 
+  // ─── NAVBAR HAMBURGER ─────────────────────────────────────────
+const navBtn = document.getElementById('nav-toggle');
+const navList = document.getElementById('nav-links');
+navBtn.addEventListener('click', () => {
+  const open = navList.classList.toggle('open');
+  navBtn.classList.toggle('active', open);
+  navBtn.setAttribute('aria-expanded', String(open));
+});
+
+
   // ─── INITIAL RENDER ───────────────────────────────
   renderCart();
 });

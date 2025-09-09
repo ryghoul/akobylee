@@ -1,236 +1,246 @@
-/* ────────────── SLIDESHOW ────────────── */
+/* ─────────────────────────────
+   AKO BY LEE — SLIDESHOW (clean)
+   Drop this in as slideshow.css
+   ───────────────────────────── */
+
+/* Container */
 .slideshow {
   position: relative;
   width: 100%;
-  height: 70vh;
-  overflow: hidden;
-  display: flex;
+  display: block;
+  overflow: hidden;                 /* no horizontal scroll */
 }
 
+/* Slides: cross-fade setup */
 .slide {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  transition: opacity 0.5s ease;
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   opacity: 0;
-}
-
-.slide.active {
-  opacity: 1;
-  position: relative;
-}
-
-.slide-image {
-  flex: 1;
-  background-size: cover;
-  background-position: center;
-}
-
-.slide-text {
-  flex: 1;
-  background-color: #e3d1a5; /* warm tan tone */
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 4rem;
-  color: #222;
-}
-
-.slide-text h4 {
-  text-transform: uppercase;
-  font-weight: normal;
-  margin-bottom: 0.5rem;
-}
-
-.slide-text h2 {
-  font-size: 2.5rem;
-  font-weight: bold;
-  margin-bottom: 1rem;
-}
-
-.slide-text p {
-  font-size: 1.1rem;
-  margin-bottom: 1.5rem;
-}
-
-.btn {
-  background-color: #e3d1a5;
-  color: white;
-  border: 2px solid black;
-  border-radius: 12px;
-  padding: 0.75rem 2rem;
-  font-weight: 600;
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
-  transition: all 0.3s ease;
-}
-
-.btn:hover {
-  background-color: #d4c091; /* slightly darker tan on hover */
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  color: white;
-}
-
-
-.slide-nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(255,255,255,0.8);
-  border: none;
-  font-size: 2rem;
-  cursor: pointer;
-  padding: 0.5rem 1rem;
-  z-index: 2;
-}
-
-.slide-nav.prev {
-  left: 0.5rem;
-}
-
-.slide-nav.next {
-  right: 0.5rem;
-}
-
-.slide {
-  pointer-events: none; /* block interactions on hidden slides */
+  pointer-events: none;
+  transition: opacity .45s ease;
   z-index: 0;
 }
 
 .slide.active {
-  pointer-events: auto; /* enable interaction only on visible slide */
-  z-index: 1;
-}
-
-
-/* ── DOT NAVIGATION ─────────────────────── */
-.slide-dots {
-  position: absolute;
-  bottom: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 0.5rem;
-  z-index: 5;
-}
-
-.dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background-color: #ccc;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
-.dot.active {
-  background-color: #c52d2f;
-}
-
-/* ── BUTTON STYLE UPGRADE ─────────────────────── */
-.slide-nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.4);
-  color: white;
-  border: none;
-  font-size: 2rem;
-  cursor: pointer;
-  padding: 0.5rem 0.75rem;
-  z-index: 3;
-  border-radius: 50%;
-  transition: background 0.3s;
-}
-
-.slide-nav:hover {
-  background: rgba(0, 0, 0, 0.6);
-}
-
-.btn,
-.slide-nav,
-.dot {
-  cursor: pointer;
-}
-
-.slideshow {
-  position: relative;
-  width: 100%;
-  height: 70vh;
-  overflow: hidden;
-}
-
-/* Hide arrows by default */
-.slide-nav {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-}
-
-/* Show on hover of slideshow */
-.slideshow:hover .slide-nav {
+  position: relative;               /* active slide participates in layout */
   opacity: 1;
   pointer-events: auto;
+  z-index: 1;
+
+  /* Desktop/tablet layout (2 columns, fixed hero height) */
+  display: grid;
+  grid-template-columns: 1.2fr 1fr; /* image : text */
+  align-items: stretch;
+  height: clamp(520px, 70vh, 820px); /* comfortable range */
 }
 
-/* Arrow Style */
+/* Image pane (uses inline background-image) */
+.slide-image {
+  background-size: cover;
+  background-position: center;
+  height: 100%;
+  min-height: 100%;
+}
+
+/* Text pane */
+.slide-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;          /* vertical centering */
+  align-items: flex-start;          /* left-align on desktop */
+  gap: .75rem;
+  padding: clamp(24px, 3vw, 56px);
+  background: var(--accent-warm, #D9C9A3);
+  color: var(--text-nearly-black, #1E1E1E);
+}
+
+/* Typography inside text pane */
+.slide-text h4 {
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-weight: 600;
+  margin: 0;
+  opacity: .9;
+}
+
+.slide-text h2 {
+  font-family: var(--font-heading, 'Montserrat', sans-serif);
+  font-weight: 700;
+  line-height: 1.1;
+  font-size: clamp(1.8rem, 1.2rem + 2.2vw, 3rem);
+  margin: 0;
+}
+
+.slide-text p {
+  font-family: var(--font-body, 'Montserrat', sans-serif);
+  line-height: 1.6;
+  font-size: clamp(1rem, .95rem + .4vw, 1.125rem);
+  margin: 0 0 .25rem 0;
+}
+
+/* CTA button */
+.btn {
+  background: var(--accent-warm, #D9C9A3);
+  color: #fff;
+  border: 2px solid #000;
+  border-radius: 12px;
+  padding: .75rem 2rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.btn:hover {
+  background: #d4c091;
+  box-shadow: 0 2px 6px rgba(0,0,0,.15);
+}
+
+/* Arrow controls (hidden by default) */
 .slide-nav {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0,0,0,.28);
   backdrop-filter: blur(4px);
-  color: white;
-  border: none;
+  color: #fff;
+  border: 0;
   font-size: 2rem;
   cursor: pointer;
-  padding: 0.75rem 1.25rem;
+  padding: .6rem 1rem;
+  border-radius: 6px;
   z-index: 3;
-  border-radius: 4px;
-  transition: background 0.3s ease, opacity 0.3s ease;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease, background .25s ease;
+}
+.slide-nav.prev { left: 1rem; }
+.slide-nav.next { right: 1rem; }
+
+/* Show arrows on hover for pointer devices */
+@media (hover:hover) {
+  .slideshow:hover .slide-nav {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .slide-nav:hover { background: rgba(0,0,0,.45); }
 }
 
-/* Hover effect */
-.slide-nav:hover {
-  background: rgba(0, 0, 0, 0.4);
-}
-
-/* Positioning */
-.slide-nav.prev {
-  left: 1rem;
-}
-
-.slide-nav.next {
-  right: 1rem;
-}
-
+/* Dot navigation */
 .slide-dots {
   position: absolute;
-  bottom: 1rem;
   left: 50%;
+  bottom: 14px;
   transform: translateX(-50%);
   display: flex;
-  gap: 0.5rem;
+  gap: .5rem;
   z-index: 5;
 }
 
 .dot {
   width: 12px;
   height: 12px;
-  background-color: rgba(255, 255, 255, 0.6);
   border-radius: 50%;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
+  background: rgba(255,255,255,.6);
+  transition: background-color .25s ease, transform .15s ease;
+}
+.dot:hover   { transform: scale(1.05); }
+.dot.active  { background: #fff; }
+
+/* ─────────────  Mobile (≤900px): stack image → text  ───────────── */
+@media (max-width: 900px) {
+  .slide.active {
+    display: block;                 /* single column */
+    height: auto;                   /* remove 70vh clamp */
+  }
+
+  .slide-image {
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 16 / 9;           /* tidy, not cropped strangely */
+  }
+
+  .slide-text {
+    align-items: center;            /* center horizontally on phones */
+    text-align: center;
+    padding: clamp(16px, 4vw, 28px);
+  }
+
+  .btn { width: 100%; }             /* friendly tap target */
+
+  /* Dots below content, centered */
+  .slide-dots {
+    position: static;
+    transform: none;
+    margin: .5rem auto 0;
+    justify-content: center;
+  }
+
+  /* Hide arrows on touch screens */
+  .slide-nav { display: none; }
 }
 
-.dot.active {
-  background-color: white;
+/* Motion safety */
+@media (prefers-reduced-motion: reduce) {
+  .slide { transition: none; }
+  .slide-nav, .dot { transition: none; }
 }
 
-.dot:hover {
-  background-color: #ddd;
+/* === Smooth desktop fades: no reflow ================================= */
+@media (min-width: 901px) {
+  /* fixed hero height so the container doesn't need layout recompute */
+  .slideshow { height: clamp(520px, 70vh, 820px); overflow: hidden; }
+
+  /* keep every slide stacked; fade only */
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: grid;                       /* keep your 2-col layout */
+    grid-template-columns: 1.2fr 1fr;
+    align-items: stretch;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .55s ease;       /* slightly longer, smoother */
+    will-change: opacity;                /* compositor hint */
+    transform: translateZ(0);            /* push to GPU */
+  }
+
+  .slide.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .slide-image { height: 100%; min-height: 100%; }
+  .slide-text  { display: flex; flex-direction: column; justify-content: center; }
 }
+
+/* More space under the dots on phones/tablets */
+@media (max-width: 900px) {
+  .slide-dots {
+    position: static;               /* already stacking below content */
+    transform: none;
+    margin: .75rem auto 1.5rem;     /* ↑ bottom margin adds gap before next section */
+    justify-content: center;
+  }
+}
+/* Show and position arrows on small screens */
+@media (max-width: 900px) {
+  .slide-nav {
+    display: block;                  /* override any previous 'display:none' */
+    opacity: 1;                      /* visible without hover */
+    pointer-events: auto;
+    background: rgba(0,0,0,.35);
+    padding: .5rem .85rem;
+    z-index: 4;
+
+    /* Center the arrows vertically over the image area.
+       28vw ≈ half of a 16:9 image’s height; clamp keeps it reasonable. */
+    top: clamp(90px, 28vw, 240px);
+    transform: translateY(-50%);
+  }
+
+  .slide-nav.prev { left: .5rem; }
+  .slide-nav.next { right: .5rem; }
+}
+

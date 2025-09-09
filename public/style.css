@@ -594,3 +594,213 @@ footer {
   @media (max-width: 360px) {
     .spotify-player { width: 94vw; }
   }
+
+  /* ── MOBILE HARDENING KIT (safe overrides) ─────────────────────────── */
+
+/* Fluid media: never overflow the viewport */
+img, video, svg, canvas, iframe { max-width: 100%; height: auto; display: block; }
+
+/* Optional: fluid type scale (keep your fonts; just scales better on mobile) */
+:root {
+  --step-0: clamp(1rem, 0.95rem + 0.4vw, 1.125rem);
+  --step-1: clamp(1.25rem, 1.1rem + 0.8vw, 1.5rem);
+  --step-2: clamp(1.6rem, 1.25rem + 1.6vw, 2rem);
+  --step-3: clamp(2rem, 1.5rem + 2.6vw, 2.6rem);
+}
+body { font-size: var(--step-0); }
+h1 { font-size: var(--step-3); line-height: 1.2; }
+h2 { font-size: var(--step-2); line-height: 1.25; }
+h3 { font-size: var(--step-1); line-height: 1.3; }
+
+/* Container utility for consistent page gutters (optional) */
+.container { width: min(1100px, 92vw); margin: 0 auto; }
+
+/* ── NAV: collapse links into a menu on small screens ─────────────── */
+#nav-toggle {
+  display: none;
+  margin-left: auto;
+  background: var(--accent-warm);
+  color: var(--text-nearly-black);
+  border: 1px solid black;
+  font-weight: 700;
+  padding: .4rem .75rem;
+  border-radius: 999px;
+}
+
+@media (max-width: 768px) {
+  /* show toggle, stack/hide links by default */
+  #nav-toggle { display: inline-flex; align-items: center; }
+  #nav-links { 
+    position: fixed;
+    top: 60px; left: 0; right: 0;
+    background: var(--text-nearly-black);
+    flex-direction: column;
+    padding: .75rem 1rem 1rem;
+    gap: .5rem;
+    border-top: 1px solid var(--border-light-gray);
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .25s ease;
+  }
+  /* when toggled open (JS will add .open) */
+  #nav-links.open { max-height: 60vh; }
+  /* remove big gap before socials on mobile */
+  #nav-links .social-icon:first-of-type { margin-left: 0; }
+}
+
+/* ── CART SIDEBAR: fit small screens safely ───────────────────────── */
+#cart-sidebar { width: min(320px, 92vw); }
+
+/* Larger touch targets on phones */
+@media (max-width: 480px) {
+  .qty-controls button { width: 36px; height: 36px; font-size: 1.1rem; }
+  #checkout-btn { padding: 1rem; font-size: 1.05rem; }
+}
+
+/* ── FOOTER: let nav wrap nicely, stack newsletter fields ─────────── */
+@media (max-width: 768px) {
+  .footer-nav { flex-wrap: wrap; gap: 1rem; }
+}
+
+.newsletter-form { gap: .5rem; }
+@media (max-width: 540px) {
+  .newsletter-form { flex-direction: column; }
+  .newsletter-form button { width: 100%; padding: .8rem 1rem; }
+}
+
+/* ── MODALS: ensure inner form scrolls on very small screens ──────── */
+@media (max-width: 400px) {
+  #checkout-form { max-height: 78vh; }
+}
+
+/* ── SPOTIFY: small phones get a bit more room ────────────────────── */
+@media (max-width: 360px) {
+  .spotify-player { width: 96vw; }
+}
+
+/* Hamburger button base */
+#nav-toggle {
+  display: none;              /* hidden on desktop */
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: .5rem;
+  z-index: 1001;              /* above nav-links */
+}
+
+/* The 3 bars */
+#nav-toggle .hamburger,
+#nav-toggle .hamburger::before,
+#nav-toggle .hamburger::after {
+  display: block;
+  background: var(--accent-warm);
+  height: 3px;
+  width: 26px;
+  border-radius: 2px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+#nav-toggle .hamburger::before,
+#nav-toggle .hamburger::after {
+  content: "";
+  position: absolute;
+  left: 0;
+}
+
+#nav-toggle .hamburger::before { top: -8px; }
+#nav-toggle .hamburger::after  { top: 8px; }
+
+
+/* Animate to "X" when active */
+#nav-toggle.active .hamburger {
+  background: transparent;
+}
+#nav-toggle.active .hamburger::before {
+  transform: rotate(45deg);
+  top: 0;
+}
+#nav-toggle.active .hamburger::after {
+  transform: rotate(-45deg);
+  top: 0;
+}
+
+/* ── NAVBAR: lock height + true overlay menu (mobile) ───────────── */
+#navbar { height: 60px; display: flex; align-items: center; }
+#navbar > * { flex-shrink: 0; }        /* prevent children from stretching nav */
+
+/* Lock navbar height */
+#navbar { height: 60px; display: flex; align-items: center; }
+#navbar > * { flex-shrink: 0; }
+
+/* Hamburger base */
+#nav-toggle { display: none; margin-left: auto; background: none; border: none; cursor: pointer; padding: .5rem; z-index: 1001; }
+#nav-toggle .hamburger,
+#nav-toggle .hamburger::before,
+#nav-toggle .hamburger::after {
+  display: block; background: var(--accent-warm); height: 3px; width: 26px; border-radius: 2px; position: relative; transition: .3s;
+}
+#nav-toggle .hamburger::before,
+#nav-toggle .hamburger::after { content:""; position:absolute; left:0; }
+#nav-toggle .hamburger::before { top:-8px; }
+#nav-toggle .hamburger::after  { top: 8px; }
+#nav-toggle.active .hamburger { background: transparent; }
+#nav-toggle.active .hamburger::before { transform: rotate(45deg); top:0; }
+#nav-toggle.active .hamburger::after  { transform: rotate(-45deg); top:0; }
+
+/* Lock navbar height */
+#navbar { height: 60px; display: flex; align-items: center; }
+#navbar > * { flex-shrink: 0; }
+
+/* Hamburger base */
+#nav-toggle { display: none; margin-left: auto; background: none; border: 0; cursor: pointer; padding: .5rem; z-index: 1001; }
+#nav-toggle .hamburger,
+#nav-toggle .hamburger::before,
+#nav-toggle .hamburger::after {
+  display: block; background: var(--accent-warm); height: 3px; width: 26px; border-radius: 2px; position: relative; transition: .3s;
+}
+#nav-toggle .hamburger::before,
+#nav-toggle .hamburger::after { content: ""; position: absolute; left: 0; }
+#nav-toggle .hamburger::before { top: -8px; }
+#nav-toggle .hamburger::after  { top:  8px; }
+#nav-toggle.active .hamburger { background: transparent; }
+#nav-toggle.active .hamburger::before { transform: rotate(45deg); top: 0; }
+#nav-toggle.active .hamburger::after  { transform: rotate(-45deg); top: 0; }
+
+@media (max-width: 768px) {
+  #nav-toggle { display: block; }
+
+  /* True overlay menu: removed from navbar flow and fully hidden when closed */
+  #nav-links {
+    position: fixed !important;
+    top: 60px; left: 0; right: 0;
+    margin-left: 0 !important;          /* override desktop push-right */
+    background: var(--text-nearly-black);
+    display: flex; flex-direction: column; gap: .5rem;
+    padding: .75rem 1rem 1rem;
+
+    max-height: 0;                       /* hidden */
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    border-top: 0;
+    pointer-events: none;
+    transition: max-height .25s ease, opacity .2s ease, visibility 0s linear .25s;
+    z-index: 600;
+  }
+
+  #nav-links.open {
+    max-height: 60vh;                    /* visible */
+    opacity: 1;
+    visibility: visible;
+    border-top: 1px solid var(--border-light-gray);
+    pointer-events: auto;
+    transition: max-height .25s ease, opacity .2s ease;
+  }
+
+  /* optional: keep social icons from shifting */
+  #nav-links .social-icon:first-of-type { margin-left: 0 !important; }
+}
+
+

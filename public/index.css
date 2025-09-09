@@ -170,3 +170,4 @@ body.no-scroll { overflow: hidden !important; }
 .card:hover::after {
   opacity: 1;
 }
+
