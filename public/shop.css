@@ -336,3 +336,207 @@
   #nav-toggle{ display:block; }  /* show burger on mobile */
 }
 
+/* =========================================================
+   RESPONSIVE/MOBILE OVERRIDES
+   Paste this at the very bottom of shop.css
+   ========================================================= */
+
+/* ---------- Global touch + safe-area niceties ---------- */
+:root {
+  --tap: 48px; /* minimum touch size */
+}
+@supports (padding: max(0px)) {
+  body { padding-bottom: max(0px, env(safe-area-inset-bottom)); }
+}
+
+/* ---------- Tablet (<= 1024px) ---------- */
+@media (max-width: 1024px) {
+  .product-detail { padding: 2.5rem 1rem; gap: 2.25rem; }
+  .product-card { gap: 1.25rem; }
+  .product-info h1 { font-size: clamp(1.75rem, 2vw + 1rem, 2.25rem); }
+  .short-desc { font-size: 0.95rem; }
+  .product-specs { font-size: 0.85rem; }
+}
+
+/* ---------- Large phones / small tablet (<= 900px) ---------- */
+@media (max-width: 900px) {
+  /* Stack product image and info */
+  .product-card { grid-template-columns: 1fr; }
+  .product-image img { border-radius: 12px; }
+
+  /* Shop hero: change 3 columns -> 1 column stack */
+  .shop-pic {
+    grid-template-columns: 1fr;
+    grid-auto-rows: 40vh;       /* tidy heights per panel */
+    height: auto;               /* stop forcing full viewport */
+    gap: 8px;
+  }
+  .shop-pic .shop-panel { min-height: 40vh; }
+
+  /* Make the middle (video) panel keep aspect nicely */
+  .shop-pic .video-panel { aspect-ratio: 16/9; min-height: unset; }
+  .shop-pic .video-panel video.shop-video {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover;
+  }
+
+  /* Overlay text sizes in hero */
+  .shop-pic .shop-overlay {
+    max-width: 92%;
+    padding: 0 1rem;
+  }
+  .shop-pic .shop-overlay h1 {
+    font-size: clamp(1.5rem, 3.5vw + 0.5rem, 2.25rem);
+  }
+  .shop-pic .shop-overlay p {
+    font-size: clamp(0.95rem, 1.2vw + 0.7rem, 1.05rem);
+  }
+  .shop-pic .btn-outline {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: var(--tap); padding: 0.65rem 1.1rem; border-radius: 12px;
+  }
+
+  /* Description/specs block wraps better */
+  .desc-specs-wrapper { gap: 1rem; }
+  .short-desc { flex: 1 1 100%; }
+  .product-specs { flex: 1 1 260px; }
+}
+
+/* ---------- Phones (<= 768px) ---------- */
+@media (max-width: 768px) {
+  /* Keep your existing mobile nav behavior; ensure it’s above hero */
+  #nav-links { z-index: 700; }
+
+  /* Product gallery: keep arrows visible on touch, shrink size a bit */
+  .product-gallery { border-radius: 10px; }
+  .product-gallery .pg-nav {
+    width: 38px; height: 38px; line-height: 38px; font-size: 20px;
+  }
+
+  /* Purchase box spacing & controls */
+  .purchase-box {
+    padding: 1rem;
+    border-radius: 1rem;
+    row-gap: 0.75rem;
+  }
+  .purchase-box select {
+    min-height: 40px; font-size: 1rem;
+  }
+  .btn-outline { min-height: var(--tap); font-size: 1rem; }
+
+  /* Toast doesn’t cover content */
+  .toast { bottom: 1rem; right: 1rem; }
+}
+
+/* ---------- Small phones (<= 600px) ---------- */
+@media (max-width: 600px) {
+  /* Tighten hero panels a little */
+  .shop-pic { grid-auto-rows: 36vh; }
+  .shop-pic .shop-panel { min-height: 36vh; }
+
+  /* Make overlay more legible on busy video */
+  .shop-pic .shop-overlay {
+    text-shadow: 0 2px 14px rgba(0,0,0,0.45);
+    backdrop-filter: saturate(110%) blur(0px);
+  }
+
+  /* Product info hierarchy */
+  .product-info { gap: 1rem; }
+  .product-info h1 { font-size: clamp(1.4rem, 5vw + 0.5rem, 1.9rem); }
+  .short-desc { font-size: 0.95rem; }
+  .product-specs { font-size: 0.85rem; }
+
+  /* Compact gallery arrows */
+  .product-detail--compact .pg-nav {
+    width: 30px; height: 30px; line-height: 30px; font-size: 18px;
+  }
+}
+
+/* ---------- Very small (<= 420px) ---------- */
+@media (max-width: 420px) {
+  .shop-pic { grid-auto-rows: 32vh; }
+  .shop-pic .shop-overlay h1 { font-size: 1.35rem; }
+  .shop-pic .shop-overlay p { font-size: 0.95rem; }
+  .product-specs { font-size: 0.8rem; }
+}
+
+/* ---------- Show gallery arrows on touch devices (no hover) ---------- */
+@media (hover: none) and (pointer: coarse) {
+  .product-gallery .pg-nav {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+}
+
+/* ---------- Prefers reduced motion (extra) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .pg-track, .pg-viewport, .toast { transition: none !important; }
+  .spin { animation: none !important; }
+}
+
+/* ===== Fix mobile gallery black gap ===== */
+@media (max-width: 768px) {
+  /* give gallery an explicit height instead of only aspect-ratio */
+  .product-gallery {
+    position: relative;
+    height: min(62vh, 420px);   /* pick a comfy cap for phones */
+    aspect-ratio: auto;         /* disable previous ratio here */
+    background: #111;           /* (kept) */
+    overflow: hidden;
+  }
+
+  /* make viewport & track fill the box */
+  .product-gallery .pg-viewport,
+  .product-gallery .pg-track {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ensure slides truly cover */
+  .product-gallery .pg-track img {
+    width: 100%;
+    height: 100%;
+    display: block;             /* removes inline-gap quirks */
+    object-fit: cover;
+    max-height: none !important;/* ignore any global caps */
+  }
+
+  /* if you use the cross-fade overlay, keep it transparent by default */
+  .product-gallery .pg-fader { opacity: 0; }
+}
+
+/* Extra small refinement */
+@media (max-width: 480px) {
+  .product-gallery { height: min(58vh, 360px); }
+}
+
+@media (max-width: 900px) {
+  .shop-pic {
+    grid-template-columns: 1fr;  /* stack vertically */
+    grid-auto-rows: auto;        /* auto height */
+    gap: 0;                      /* remove spacing between panels */
+    height: auto;
+  }
+
+  .shop-pic .shop-panel {
+    min-height: auto;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* make video panel behave like an image, full-width */
+  .shop-pic .video-panel {
+    aspect-ratio: 16/9;  /* or 3/4 if you want taller */
+    width: 100%;
+    height: auto;
+  }
+  .shop-pic .video-panel video.shop-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}

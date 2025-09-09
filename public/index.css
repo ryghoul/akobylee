@@ -171,3 +171,10 @@ body.no-scroll { overflow: hidden !important; }
   opacity: 1;
 }
 
+
+/* Responsive card title size */
+.card .title {
+  font-size: clamp(1rem, 4vw, 2rem); /* shrinks on small, caps on large */
+  line-height: 1.1;
+  word-break: break-word;
+}
