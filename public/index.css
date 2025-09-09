@@ -1,4 +1,6 @@
-/* ────────────── LANDING OVERLAY ────────────── */
+/* ───────────────────────────────────────────────────────────
+   LANDING OVERLAY
+   ─────────────────────────────────────────────────────────── */
 #landing {
   position: fixed;
   inset: 0;
@@ -7,8 +9,15 @@
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  overflow: hidden;
 }
-
+#landing::before {
+  content: "";
+  position: absolute;
+  inset: -64px; /* avoid edge halo during blur */
+  background: var(--landing-gray);
+  z-index: -1;
+}
 #enter-button {
   background: none;
   border: none;
@@ -17,241 +26,145 @@
   flex-direction: column;
   align-items: center;
 }
-
-#teapot-icon {
-  width: 120px;
-  transition: transform 0.2s ease;
-}
-
-#teapot-icon:hover {
-  transform: scale(1.1);
-}
-
+#teapot-icon { width: 120px; transition: transform .2s ease; }
+#teapot-icon:hover { transform: scale(1.1); }
 #enter-text {
-  margin-top: 8px;
-  font-size: 1rem;
-  color: var(--text-nearly-black);
-  letter-spacing: 1px;
-  text-decoration: underline;
+  margin-top: 8px; font-size: 1rem; color: var(--text-nearly-black);
+  letter-spacing: 1px; text-decoration: underline;
 }
-
-.fade-out {
-  animation: fadeOut 0.4s forwards;
-}
-
-@keyframes fadeOut {
-  to {
-    opacity: 0;
-    visibility: hidden;
-  }
-}
-
-/* Dissolve overlay only (no scale/translate) */
-#landing.dissolve-out {
-  animation: landingDissolve 420ms ease forwards;
-  will-change: opacity, filter;
-}
-@keyframes landingDissolve {
-  from { opacity: 1; filter: blur(0); }
-  to   { opacity: 0; filter: blur(10px); visibility: hidden; }
-}
-
-/* Prevent scroll while overlay is up */
+.fade-out { animation: fadeOut .4s forwards; }
+@keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
+#landing.dissolve-out { animation: landingDissolve 420ms ease forwards; will-change: opacity, filter; }
+@keyframes landingDissolve { from { opacity:1; filter:blur(0); } to { opacity:0; filter:blur(10px); visibility:hidden; } }
 body.no-scroll { overflow: hidden !important; }
 
-/* Avoid edge halo while blurring */
-#landing { position: fixed; inset: 0; overflow: hidden; }
-#landing::before {
-  content: "";
-  position: absolute;
-  inset: -64px;                /* extends past edges during blur */
-  background: var(--landing-gray);
-  z-index: -1;
-}
+/* ───────────────────────────────────────────────────────────
+   VIDEO BANNER (hero)
+   ─────────────────────────────────────────────────────────── */
+:root { --nav-h: 60px; }
 
-
-/* ────────────── VIDEO BANNER ────────────── */
 .video-banner {
   position: relative;
   width: 100%;
-  height: calc(100vh - 60px);
-  margin-top: 60px;
+  height: calc(100vh - var(--nav-h));   /* fallback */
+  margin-top: var(--nav-h);
   overflow: hidden;
+}
+@supports (height: 100dvh) {
+  .video-banner { height: calc(100dvh - var(--nav-h)); }
+}
+@supports (height: 100svh) {
+  .video-banner { height: calc(100svh - var(--nav-h)); }
 }
 
 .banner-video {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
   object-fit: cover;
   z-index: 1;
   filter: contrast(1.1) brightness(0.45);
 }
 
+/* Overlay defaults (desktop/tablet): center-center */
 .video-overlay {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;                    /* let us center with grid */
+  display: grid;
+  place-items: center;
   z-index: 2;
   text-align: center;
   color: #fff;
+  padding: 0 1rem;
+  box-sizing: border-box;
 }
-
 .video-overlay h1 {
   font-family: var(--font-heading);
-  font-size: 1rem;
-  line-height: 1;
-  white-space: nowrap;
+  font-size: clamp(0.1rem, 2vw, 1rem);
+  line-height: 1.25;
   margin: 0;
   color: orange;
+  white-space: normal;         /* allow wrap */
 }
 
+/* Grain overlay */
 .video-banner::after {
   content: "";
-  position: absolute;
-  inset: 0;
+  position: absolute; inset: 0;
   background: url('Pictures/grain.png') repeat;
-  opacity: 0.15;
-  pointer-events: none;
-  mix-blend-mode: overlay;
+  opacity: .15; pointer-events: none; mix-blend-mode: overlay;
   z-index: 2;
 }
 
-/* ────────────── CARD GRID ────────────── */
+/* Phones: keep overlay centered (not bottom), account for safe areas */
+@media (max-width: 600px) {
+  .video-banner {
+    display: grid;
+    place-items: center;
+    padding: 0 16px max(16px, env(safe-area-inset-bottom));
+  }
+  .video-overlay {
+    position: static;          /* in-flow so it centers with the grid */
+    transform: none;
+    max-width: 90%;
+    width: 100%;
+  }
+  .video-overlay h1 {
+    font-size: clamp(0.25rem, 2vw, 1rem);
+    line-height: 1.35;
+  }
+  .banner-video { filter: contrast(1.1) brightness(0.42); }
+}
+
+/* ───────────────────────────────────────────────────────────
+   CARD GRID (3-up on desktop → responsive)
+   ─────────────────────────────────────────────────────────── */
 .card-grid {
   display: flex;
   justify-content: space-between;
+  gap: 1rem;
   width: 100%;
   margin: 0;
   padding: 0;
+  box-sizing: border-box;
 }
-
 .card {
   position: relative;
   flex: 1 1 calc((100% - 2rem) / 3);
   aspect-ratio: 1 / 1;
   overflow: hidden;
 }
-
 .card img {
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  position: relative; z-index: 2;
+  width: 100%; height: 100%; object-fit: cover; display: block;
 }
-
 .card .title {
-  position: absolute;
-  top: 1rem;
-  left: 1rem;
-  z-index: 3;
-  color: white;
+  position: absolute; top: 1rem; left: 1rem;
+  z-index: 3; color: #fff;
   font-family: var(--font-heading);
-  font-size: 2rem;
-  text-transform: uppercase;
-}
-
-.card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  box-sizing: border-box;
-  border: 12px solid white;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-  z-index: 10;
-}
-
-.card:hover::after {
-  opacity: 1;
-}
-
-
-/* Responsive card title size */
-.card .title {
-  font-size: clamp(1rem, 4vw, 2rem); /* shrinks on small, caps on large */
-  line-height: 1.1;
+  font-size: clamp(1rem, 4vw, 2rem);
+  line-height: 1.1; text-transform: uppercase;
   word-break: break-word;
 }
-
-/* ────────────── Responsive Video Overlay ────────────── */
-.video-overlay {
-  padding: 0 1rem;          /* small side padding on mobile */
-  max-width: 90%;           /* prevent text from overflowing */
-  box-sizing: border-box;
+.card::after {
+  content: ""; position: absolute; inset: 0;
+  box-sizing: border-box; border: 12px solid #fff;
+  opacity: 0; transition: opacity .3s ease; pointer-events: none; z-index: 10;
 }
+.card:hover::after { opacity: 1; }
 
-.video-overlay h1 {
-  font-size: clamp(1.2rem, 6vw, 3rem); /* scales between 1.2rem and 3rem */
-  line-height: 1.2;
-  white-space: normal;      /* allow wrapping on small screens */
-  margin: 0;
-  color: orange;
+/* Card grid responsive: 2-up on tablets, 1-up on phones */
+@media (max-width: 900px) {
+  .card-grid { gap: .75rem; }
+  .card { flex: 1 1 calc((100% - .75rem) / 2); }
 }
-
 @media (max-width: 600px) {
-  .video-overlay {
-    top: auto;
-    bottom: 10%;            /* lift text higher for small screens */
-    transform: translateX(-50%);
-    text-align: center;
-  }
-
-  .video-overlay h1 {
-    font-size: clamp(1rem, 5vw, 1.6rem);
-    line-height: 1.3;
-  }
+  .card { flex: 1 1 100%; }
 }
 
-/* ---------- Mobile-safe video banner & overlay ---------- */
-:root { --nav-h: 60px; }
-
-/* use regular vh as a fallback, then upgrade to dvh if supported */
-.video-banner {
-  height: calc(100vh - var(--nav-h));
-  margin-top: var(--nav-h);
-}
-@supports (height: 100dvh) {
-  .video-banner { height: calc(100dvh - var(--nav-h)); }
-}
-
-/* phone layout: stop absolutely positioning the overlay */
-@media (max-width: 600px) {
-  .video-banner {
-    display: flex;
-    align-items: flex-end;                 /* place overlay near bottom */
-    justify-content: center;
-    padding: 0 16px max(24px, env(safe-area-inset-bottom));
-    /* keep video underneath */
-    position: relative;
-  }
-
-  .video-overlay {
-    position: static;                      /* cancel absolute */
-    transform: none;                       /* cancel translate */
-    max-width: 90%;
-    text-align: center;
-    padding: 0;                             /* text breathes via banner padding */
-  }
-
-  /* make the heading readable and scalable */
-  .video-overlay h1 {
-    font-size: clamp(1rem, 5.2vw, 1.6rem);
-    line-height: 1.35;
-    white-space: normal;                   /* allow wrapping */
-    margin: 0;
-  }
-
-  /* darken video a touch on phones so text pops */
-  .banner-video { filter: contrast(1.1) brightness(0.42); }
-}
-
-/* optional: support small viewport unit on newer iOS for even better fit */
-@supports (height: 100svh) {
-  .video-banner { height: calc(100svh - var(--nav-h)); }
+/* ───────────────────────────────────────────────────────────
+   Accessibility / motion
+   ─────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .fade-out, #landing.dissolve-out,
+  .card::after { animation: none !important; transition: none !important; }
 }
