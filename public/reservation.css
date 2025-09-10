@@ -1,101 +1,97 @@
-.reservation-section {
-  padding: 4rem 1rem;
-  font-family: 'Montserrat', sans-serif;
+/* ================== RESERVATION (Calendly fullscreen) ================== */
+/* Adjust this if your fixed navbar height changes */
+:root{
+  --nav-h: 60px;
+  /* bottom cushion so the white Calendly panel never touches the footer */
+  --resv-bottom-pad: max(24px, 2.5vh, env(safe-area-inset-bottom));
 }
 
-.reservation-container {
-  max-width: 600px;
-  margin: 0 auto;
-  text-align: center;
-  color: #333;
-}
-
-.reservation-container h1 {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.reservation-container p {
-  font-size: 1rem;
-  margin-bottom: 2rem;
-}
-
-.reservation-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  text-align: left;
-}
-
-.reservation-form label {
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-}
-
-.reservation-form input,
-.reservation-form textarea {
-  padding: 0.75rem;
-  border: 1px solid #ccc;
-  border-radius: 0.5rem;
-  font-size: 1rem;
-  width: 100%;
-}
-
-.reservation-form button {
-  padding: 0.75rem;
-  font-size: 1.25rem;
-
-  margin-top: 1.5rem;
-  padding: 0.75rem 2rem;
-  background-color: var(--accent-warm);
-  border: none;
-  color: white;
-  border-radius: 0.5rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  border: 2px solid #fff;
-}
-
-.reservation-form button:hover {
-  background-color: #bda87e;
-}
-
-/* ==== Fullscreen reservation (Calendly) ==== */
-/* If your navbar height changes, update this value */
-:root { --nav-h: 60px; }
-
-.reservation-section {
+#reservation.reservation-section{
   padding: 0;
   background: var(--accent-warm);
+  font-family: 'Montserrat', sans-serif;
+  /* anchor jumps land below the fixed navbar */
   scroll-margin-top: calc(var(--nav-h) + 12px);
 }
 
-.reservation-container {
+#reservation .reservation-container{
   max-width: none;
   width: 100%;
   margin: 0;
-  padding: 0;
+  /* space above footer; the widget height subtracts this amount */
+  padding: 0 0 var(--resv-bottom-pad);
+  min-height: calc(100dvh - var(--nav-h));
+  display: grid;
+  grid-template-rows: auto 1fr;    /* heading/intro + widget */
+  align-content: stretch;
+  color: #333;
+  text-align: center;
 }
 
-/* Fill the viewport below the fixed navbar (handles mobile address bars) */
-.reservation-container,
-.reservation-section .calendly-inline-widget {
-  height: calc(100dvh - var(--nav-h)) !important;
-  min-height: calc(100svh - var(--nav-h)) !important;
+#reservation .reservation-container > h1{
+  font-size: clamp(1.8rem, 4.8vw, 2.6rem);
+  margin: 1rem 0 .5rem;
+}
+
+#reservation .reservation-container > p{
+  font-size: clamp(1rem, 2.6vw, 1.125rem);
+  margin: 0 0 1rem;
+}
+
+/* Calendly widget fills the remaining viewport height */
+#reservation .calendly-inline-widget{
   width: 100% !important;
+  height: calc(100dvh - var(--nav-h) - var(--resv-bottom-pad)) !important;
   border: 0;
 }
 
-/* Make Calendly's injected iframe stretch too */
-.reservation-section .calendly-inline-widget iframe {
+/* Ensure Calendly's injected iframe stretches too */
+#reservation .calendly-inline-widget iframe{
   width: 100% !important;
   height: 100% !important;
   border: 0;
 }
 
-/* Optional: hide heading/intro on smaller screens for true fullscreen */
-@media (max-width: 1024px) {
-  .reservation-container > h1,
-  .reservation-container > p { display: none; }
+/* Optional: hide heading/intro on smaller screens for a true full-bleed look */
+@media (max-width: 1024px){
+  #reservation .reservation-container > h1,
+  #reservation .reservation-container > p{
+    display: none;
+  }
+}
+
+/* ================== (Optional) Manual form styles ================== */
+/* Keep these only if you ever use a custom reservation form on this page. */
+.reservation-form{
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  text-align: left;
+}
+.reservation-form label{
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+.reservation-form input,
+.reservation-form textarea{
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+}
+.reservation-form button{
+  margin-top: 1.5rem;
+  padding: 0.75rem 2rem;
+  font-size: 1.25rem;
+  background-color: var(--accent-warm);
+  color: #fff;
+  border: 2px solid #fff;
+  border-radius: 0.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+.reservation-form button:hover{
+  background-color: #bda87e;
 }
