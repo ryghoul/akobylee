@@ -377,3 +377,23 @@
     transition: none !important;
   }
 }
+
+/* Subsection description (sits under the header, above the grid) */
+.subsection-desc {
+  max-width: 900px;
+  margin: -0.25rem auto 1.75rem; /* tucks closer to the header */
+  padding: 0 1rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text-dark-gray);
+  text-align: center;
+  font-weight: 600;   /* <-- added bold */
+}
+
+/* Optional: slightly smaller on phones */
+@media (max-width: 600px) {
+  .subsection-desc {
+    font-size: 0.95rem;
+    margin-bottom: 1.25rem;
+  }
+}

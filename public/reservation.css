@@ -52,16 +52,13 @@
   border: 0;
 }
 
-/* Optional: hide heading/intro on smaller screens for a true full-bleed look */
-@media (max-width: 1024px){
-  #reservation .reservation-container > h1,
-  #reservation .reservation-container > p{
-    display: none;
-  }
-}
+/* ================== REMOVE THESE ==================
+   Before, mobile hid the heading/intro and forced Calendly full bleed.
+   To keep desktop & mobile consistent, we simply don’t override it.
+   So we DELETE the old @media (max-width: 1024px) and (max-width: 600px).
+=================================================== */
 
 /* ================== (Optional) Manual form styles ================== */
-/* Keep these only if you ever use a custom reservation form on this page. */
 .reservation-form{
   display: flex;
   flex-direction: column;
