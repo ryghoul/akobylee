@@ -2,14 +2,17 @@ services:
   - type: web
     name: ako-site
     runtime: node
+    plan: starter          # persistent disks require a paid plan
     rootDir: .
     buildCommand: npm install
     startCommand: node server.js
 
-    # Persistent disk for uploaded images + data
+    # Persistent disk for the menu editor's saved snapshot.
+    # Mounted outside the repo so it doesn't hide the committed public/ images.
+    # (Image uploads are committed to GitHub, not written to disk.)
     disk:
-      name: ako-uploads
-      mountPath: /opt/render/project/src/public/Pictures
+      name: ako-data
+      mountPath: /var/data
       sizeGB: 1
 
     envVars:
@@ -18,22 +21,36 @@ services:
       - key: ADMIN_USER
         value: akostaff
       - key: ADMIN_PASS
-        generateValue: false   # Set this manually in Render dashboard
-        # Go to: Render dashboard -> your service -> Environment -> Add variable
-        # Key: ADMIN_PASS   Value: your chosen password
+        sync: false            # Set manually in the Render dashboard
       - key: ADMIN_SESSION_SECRET
         generateValue: true    # Render auto-generates a secure random value
       - key: MENU_STATE_FILE
-        value: /opt/render/project/src/public/Pictures/menu-state.json
+        value: /var/data/menu-state.json
       - key: MENU_AUTO_PUBLISH
-        value: "0"            # Set to "1" if you want every save to auto-publish to GitHub
+        value: "0"             # Set to "1" to auto-publish every save to GitHub
       - key: GITHUB_OWNER
-        generateValue: false   # Example: ryghoul
+        sync: false            # e.g. ryghoul
       - key: GITHUB_REPO
-        generateValue: false   # Example: akowebsite
+        sync: false            # e.g. akowebsite
       - key: GITHUB_BRANCH
         value: main
       - key: MENU_STATE_REPO_PATH
         value: data/menu-state.json
       - key: GITHUB_TOKEN
-        generateValue: false   # GitHub token with contents:write for this repo
+        sync: false            # GitHub token with contents:write for this repo
+      - key: MONGO_URL
+        sync: false            # MongoDB Atlas connection string
+      - key: MONGO_DB
+        value: akoshop
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_APP_PASSWORD
+        sync: false
+      - key: TO_EMAIL
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false            # One URL only, e.g. https://akobylee.onrender.com
+      - key: ALLOWED_ORIGINS
+        sync: false            # Comma-separated, each with https://

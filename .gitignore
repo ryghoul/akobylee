@@ -6,3 +6,5 @@ environmentals.env
 
 # Local runtime state (menu editor's saved snapshot, disposable per-server)
 data/
+# Dependencies (installed by npm install on build)
+node_modules/
