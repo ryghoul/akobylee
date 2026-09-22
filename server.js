@@ -51,14 +51,19 @@ const MENU_STATE_REPO_PATH = process.env.MENU_STATE_REPO_PATH || 'data/menu-stat
 const SHOP_CATALOG_REPO_PATH = process.env.SHOP_CATALOG_REPO_PATH || 'data/shop-catalog.json';
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-const ADMIN_USER = process.env.ADMIN_USER || (IS_PRODUCTION ? '' : 'akostaff');
-const ADMIN_PASS = process.env.ADMIN_PASS || (IS_PRODUCTION ? '' : 'teaparasaamin');
+const ADMIN_USER = process.env.ADMIN_USER || '';
+const ADMIN_PASS = process.env.ADMIN_PASS || '';
 const ADMIN_COOKIE_NAME = 'ako_admin_session';
 const ADMIN_SESSION_TTL_MS = 1000 * 60 * 60 * 12;
-const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || (IS_PRODUCTION ? '' : 'ako-admin-session-secret');
+// Outside production, fall back to a per-process random secret (admin sessions reset on restart).
+const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET
+  || (IS_PRODUCTION ? '' : crypto.randomBytes(32).toString('hex'));
 
-if (IS_PRODUCTION && (!ADMIN_USER || !ADMIN_PASS || !ADMIN_SESSION_SECRET)) {
-  throw new Error('ADMIN_USER, ADMIN_PASS, and ADMIN_SESSION_SECRET are required in production.');
+if (!ADMIN_USER || !ADMIN_PASS) {
+  throw new Error('ADMIN_USER and ADMIN_PASS must be set (add them to .env locally or the Render dashboard).');
+}
+if (IS_PRODUCTION && !ADMIN_SESSION_SECRET) {
+  throw new Error('ADMIN_SESSION_SECRET is required in production.');
 }
 
 const DATA_DIR = path.resolve(__dirname, 'data');
