@@ -65,11 +65,55 @@
     });
   }
 
+  // Reads a staff-picked image file as a base64 data URL, downscaled and
+  // re-encoded as JPEG so it stays small. Raw phone photos are several MB,
+  // which overflows localStorage (breaking Save) and bloats every request.
+  // GIF/SVG pass through untouched so animation/vector data isn't lost.
+  const STAGED_IMAGE_MAX_DIM = 1600;
+  const STAGED_IMAGE_QUALITY = 0.85;
+
+  function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error || new Error('Unable to read file.'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function readImageFileAsDataUrl(file) {
+    const original = await readFileAsDataUrl(file);
+    if (file.type === 'image/gif' || file.type === 'image/svg+xml') return original;
+
+    try {
+      const img = await new Promise((resolve, reject) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = () => reject(new Error('Unable to decode image.'));
+        el.src = original;
+      });
+      const scale = Math.min(1, STAGED_IMAGE_MAX_DIM / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; // JPEG has no alpha — flatten transparent PNGs onto white
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const compressed = canvas.toDataURL('image/jpeg', STAGED_IMAGE_QUALITY);
+      return compressed.length < original.length ? compressed : original;
+    } catch (error) {
+      console.warn('[editor] image compression skipped:', error);
+      return original;
+    }
+  }
+
   /* ── Expose cart open/close globally for shop.js ── */
   window.AKO = window.AKO || {};
   window.AKO.openCart  = openCart;
   window.AKO.closeCart = closeCart;
   window.AKO.wireModalDismiss = wireModalDismiss;
+  window.AKO.readImageFileAsDataUrl = readImageFileAsDataUrl;
 
 })();
 
@@ -466,6 +510,8 @@
       btn.textContent = 'Publishing...';
       try {
         await window.AKOEditor[methodName]();
+      } catch (error) {
+        alert(error.message || 'GitHub publish failed.');
       } finally {
         btn.disabled = false;
         btn.textContent = originalLabel;
@@ -488,11 +534,20 @@
     const deleteBtn = makeToolbarButton('Delete Selected', () => callEditor('deleteSelectedDrink'));
     const sectionBtn = makeToolbarButton('Create Section', () => callEditor('createMenuSection'));
 
+    // menu.js keeps this button's label/disabled state in sync with whether
+    // there are unsaved changes (see updateUnsavedMenuState).
+    const saveBtn = makeToolbarButton('Saved', () => callEditor('saveMenuChanges'));
+    saveBtn.id = 'menuSaveBtn';
+    saveBtn.classList.add('editor-save-btn');
+
     const publishBtn = makePublishButton('publishMenuStateToGitHub');
 
-    const exitBtn = makeToolbarButton('Exit Editor', () => setEditorMode(false));
+    const exitBtn = makeToolbarButton('Exit Editor', () => {
+      if (callEditor('confirmLeaveMenuEditor') === false) return;
+      setEditorMode(false);
+    });
 
-    toolbar.append(undoBtn, redoBtn, addBtn, editBtn, moveCurrentBtn, moveArchiveBtn, deleteBtn, sectionBtn, publishBtn, exitBtn);
+    toolbar.append(undoBtn, redoBtn, addBtn, editBtn, moveCurrentBtn, moveArchiveBtn, deleteBtn, sectionBtn, saveBtn, publishBtn, exitBtn);
     return toolbar;
   }
 
@@ -530,6 +585,10 @@
     const onShop = !onMenu && isShopPage();
 
     if (!enabled || (!onMenu && !onShop)) {
+      // Leaving editor mode: re-render so inactive products disappear again.
+      if (onShop && window.AKOShop && typeof window.AKOShop.reload === 'function') {
+        window.AKOShop.reload();
+      }
       if (window.AKOEditor && typeof window.AKOEditor.refreshMenuEditorState === 'function') {
         window.AKOEditor.refreshMenuEditorState();
       }

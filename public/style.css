@@ -395,6 +395,18 @@ body.nav-open .nav-drawer-list li:nth-child(7) a { transition: opacity 0.28s eas
   transform: translateY(-1px);
 }
 
+/* Save button: bright while there are unsaved changes, muted once saved. */
+.editor-toolbar .editor-save-btn.has-unsaved {
+  background: var(--ako-bright-red);
+  box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.18);
+}
+
+.editor-toolbar .editor-save-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  transform: none;
+}
+
 .editor-toolbar {
   position: fixed;
   left: 20px;

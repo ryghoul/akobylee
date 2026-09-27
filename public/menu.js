@@ -361,6 +361,7 @@ const closeBtn   = document.getElementById('modalClose');
 const archiveRows = document.getElementById('archiveRows');
 const MENU_STATE_URL = '/api/menu-state';
 const MENU_PUBLISH_URL = '/api/menu-state/publish';
+const escapeHtml = window.AKO.escapeHtml; // shared with script.js (loaded first)
 
 function normalizeName(value) {
   return String(value || '')
@@ -372,7 +373,9 @@ function normalizeName(value) {
 
 function getCurrentDrinkNameSet() {
   const names = new Set();
-  document.querySelectorAll('#panel-current .mrow-name').forEach(item => {
+  // Archive rows live inside #panel-current too — counting them would make
+  // each archive re-render hide a different set of archived drinks.
+  document.querySelectorAll('#panel-current .menu-section:not(#archiveSection) .mrow-name').forEach(item => {
     names.add(normalizeName(item.textContent));
   });
   return names;
@@ -434,6 +437,47 @@ function createMenuRowElement(rowData) {
   return row;
 }
 
+// A drink's description lives on its row (that's what the snapshot saves);
+// MENU_DATA.desc mirrors it once the drink has been edited.
+function getMenuDrinkDescription(id) {
+  const data = MENU_DATA[id] || {};
+  if (typeof data.desc === 'string') return data.desc;
+  const archived = ARCHIVE_MENU_ITEMS.find(entry => entry.id === id);
+  if (archived) return archived.desc || archived.description || '';
+  const row = document.querySelector(`.mrow[data-id="${CSS.escape(id)}"] .mrow-desc`);
+  return row ? row.textContent.trim() : (data.description || '');
+}
+
+function setMenuRowDescription(row, desc) {
+  let descEl = row.querySelector('.mrow-desc');
+  if (!desc) {
+    if (descEl) descEl.remove();
+    return;
+  }
+  if (!descEl) {
+    descEl = document.createElement('div');
+    descEl.className = 'mrow-desc';
+    row.querySelector('.mrow-left')?.appendChild(descEl);
+  }
+  descEl.textContent = desc;
+}
+
+function createMenuSectionElement(titleText) {
+  const section = document.createElement('section');
+  section.className = 'menu-section';
+
+  const title = document.createElement('h2');
+  title.className = 'menu-section-title';
+  title.textContent = titleText;
+  section.appendChild(title);
+  return section;
+}
+
+// Current-menu sections always sit above the Archive section.
+function insertMenuSectionBeforeArchive(currentPanel, section) {
+  currentPanel.insertBefore(section, currentPanel.querySelector(':scope > #archiveSection'));
+}
+
 function ensureCurrentMenuSection() {
   const currentPanel = document.getElementById('panel-current');
   if (!currentPanel) return null;
@@ -442,16 +486,40 @@ function ensureCurrentMenuSection() {
   let section = sections[sections.length - 1];
   if (section) return section;
 
-  section = document.createElement('section');
-  section.className = 'menu-section';
-
-  const title = document.createElement('h2');
-  title.className = 'menu-section-title';
-  title.textContent = 'CURRENT MENU';
-  section.appendChild(title);
-
-  currentPanel.appendChild(section);
+  section = createMenuSectionElement('CURRENT MENU');
+  insertMenuSectionBeforeArchive(currentPanel, section);
   return section;
+}
+
+// Toolbar "Create Section": adds an empty section right after the selected
+// drink's section, or at the end of the current menu if nothing is selected.
+// Drinks are then dragged into it; empty sections are hidden from customers.
+function createMenuSection() {
+  const currentPanel = document.getElementById('panel-current');
+  if (!currentPanel) return;
+
+  const input = window.prompt('Name for the new menu section:');
+  if (input === null) return;
+  const titleText = input.trim();
+  if (!titleText) {
+    alert('Section name cannot be blank.');
+    return;
+  }
+
+  const existingNames = [...currentPanel.querySelectorAll('.menu-section:not(#archiveSection) .menu-section-title')]
+    .map(el => normalizeName(el.textContent));
+  if (existingNames.includes(normalizeName(titleText))) {
+    alert(`There is already a section called "${titleText}".`);
+    return;
+  }
+
+  const section = createMenuSectionElement(titleText);
+  const selected = currentPanel.querySelector('.menu-section:not(#archiveSection) .mrow.is-selected');
+  const afterSection = selected ? selected.closest('.menu-section') : null;
+  if (afterSection) afterSection.after(section); else insertMenuSectionBeforeArchive(currentPanel, section);
+
+  recordMenuChange();
+  section.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function buildCurrentSectionsSnapshot() {
@@ -503,12 +571,24 @@ function snapshotsEqual(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+// localStorage is only a local cache — the server is the source of truth.
+// A quota error here (e.g. staged base64 images) must never throw, or it
+// aborts an editor action halfway through.
+function safeLocalStorageSet(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (error) {
+    console.warn(`[menu] could not cache ${key} locally:`, error);
+    try { localStorage.removeItem(key); } catch { /* ignore */ }
+  }
+}
+
 function persistMenuSnapshot(snapshot) {
-  localStorage.setItem(MENU_STATE_KEY, JSON.stringify(snapshot));
+  safeLocalStorageSet(MENU_STATE_KEY, JSON.stringify(snapshot));
 }
 
 function persistMenuHistory() {
-  localStorage.setItem(MENU_HISTORY_KEY, JSON.stringify(menuHistory));
+  safeLocalStorageSet(MENU_HISTORY_KEY, JSON.stringify(menuHistory));
 }
 
 function renderCurrentSections(currentSections) {
@@ -530,13 +610,7 @@ function renderCurrentSections(currentSections) {
       return;
     }
 
-    const section = document.createElement('section');
-    section.className = 'menu-section';
-
-    const title = document.createElement('h2');
-    title.className = 'menu-section-title';
-    title.textContent = sectionTitle;
-    section.appendChild(title);
+    const section = createMenuSectionElement(sectionTitle);
 
     (sectionData.rows || []).forEach(rowData => {
       section.appendChild(createMenuRowElement(rowData));
@@ -612,7 +686,25 @@ function syncMenuStateToServer(snapshot) {
   return remoteSaveChain;
 }
 
-function saveMenuState() {
+// Editor changes are a local draft until staff click Save — nothing reaches
+// the server (or customers) before that. The page has unsaved changes
+// whenever the on-screen menu differs from the last snapshot the server
+// confirmed, so undoing back to the saved state counts as clean.
+let savedMenuSnapshot = null;
+let menuHasUnsavedChanges = false;
+
+function updateUnsavedMenuState() {
+  menuHasUnsavedChanges = !!savedMenuSnapshot && !snapshotsEqual(buildMenuSnapshot(), savedMenuSnapshot);
+
+  const saveBtn = document.getElementById('menuSaveBtn');
+  if (saveBtn && !saveBtn.dataset.busy) {
+    saveBtn.textContent = menuHasUnsavedChanges ? 'Save Changes' : 'Saved';
+    saveBtn.disabled = !menuHasUnsavedChanges;
+    saveBtn.classList.toggle('has-unsaved', menuHasUnsavedChanges);
+  }
+}
+
+function recordMenuChange() {
   const snapshot = buildMenuSnapshot();
   const lastSnapshot = menuHistory.undo[menuHistory.undo.length - 1];
 
@@ -627,9 +719,70 @@ function saveMenuState() {
     persistMenuHistory();
   }
 
-  syncMenuStateToServer(cloneSnapshot(snapshot));
+  updateUnsavedMenuState();
   return snapshot;
 }
+
+// Sends the current on-screen menu to the server and makes it the new
+// saved baseline. Throws on failure.
+async function commitMenuToServer() {
+  const snapshot = buildMenuSnapshot();
+  await syncMenuStateToServer(cloneSnapshot(snapshot));
+  savedMenuSnapshot = snapshot;
+  updateUnsavedMenuState();
+}
+
+async function saveMenuChanges() {
+  const saveBtn = document.getElementById('menuSaveBtn');
+  if (saveBtn) {
+    saveBtn.dataset.busy = '1';
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+  }
+
+  try {
+    await commitMenuToServer();
+    return true;
+  } catch (error) {
+    alert(`Could not save your menu changes: ${error.message}`);
+    return false;
+  } finally {
+    if (saveBtn) delete saveBtn.dataset.busy;
+    updateUnsavedMenuState();
+  }
+}
+
+function discardMenuChanges() {
+  if (!savedMenuSnapshot) return;
+  applyMenuSnapshot(cloneSnapshot(savedMenuSnapshot));
+  menuHistory = { undo: [buildMenuSnapshot()], redo: [] };
+  persistMenuHistory();
+  updateUnsavedMenuState();
+}
+
+// Called by the toolbar's Exit Editor button; false means stay in the editor.
+function confirmLeaveMenuEditor() {
+  if (!menuHasUnsavedChanges) return true;
+  if (!window.confirm('You have unsaved menu changes. Are you sure you want to exit? Your changes will be discarded.')) {
+    return false;
+  }
+  discardMenuChanges();
+  return true;
+}
+
+window.addEventListener('beforeunload', (event) => {
+  if (!menuHasUnsavedChanges) return;
+  event.preventDefault();
+  event.returnValue = ''; // browsers show their own "Leave site?" text
+});
+
+document.addEventListener('keydown', (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's'
+    && document.body.classList.contains('editor-enabled')) {
+    event.preventDefault();
+    if (menuHasUnsavedChanges) saveMenuChanges();
+  }
+});
 
 function applyLocalMenuStateFallback() {
   const raw = localStorage.getItem(MENU_STATE_KEY);
@@ -708,9 +861,14 @@ const IMAGE_MIME_EXTENSIONS = {
 // committed files — this runs first so the JSON snapshot published right
 // after references real paths, not multi-megabyte base64 blobs.
 async function resolveStagedImagesToGitHub() {
-  for (const [id, value] of Object.entries(MENU_IMAGES)) {
+  // Archived drinks keep their own copy of the image (ARCHIVE_MENU_ITEMS),
+  // so both places need resolving; the same data URL is uploaded only once.
+  const uploadedPaths = new Map();
+
+  async function resolve(id, value) {
     const match = /^data:([^;]+);base64,/.exec(value || '');
-    if (!match) continue;
+    if (!match) return value;
+    if (uploadedPaths.has(value)) return uploadedPaths.get(value);
 
     const ext = IMAGE_MIME_EXTENSIONS[match[1]] || 'png';
     const response = await fetch('/api/github/upload-image', {
@@ -723,13 +881,21 @@ async function resolveStagedImagesToGitHub() {
     if (!response.ok || !payload.ok) {
       throw new Error(payload.error || `Failed to upload image for "${id}".`);
     }
-    MENU_IMAGES[id] = payload.path;
+    uploadedPaths.set(value, payload.path);
+    return payload.path;
+  }
+
+  for (const [id, value] of Object.entries(MENU_IMAGES)) {
+    MENU_IMAGES[id] = await resolve(id, value);
+  }
+  for (const item of ARCHIVE_MENU_ITEMS) {
+    if (item.image) item.image = await resolve(item.id || 'archive', item.image);
   }
 }
 
 async function publishMenuStateToGitHub() {
   await resolveStagedImagesToGitHub();
-  await syncMenuStateToServer(cloneSnapshot(buildMenuSnapshot()));
+  await commitMenuToServer(); // publishing also saves any unsaved changes
 
   const response = await fetch(MENU_PUBLISH_URL, {
     method: 'POST',
@@ -763,6 +929,7 @@ function undoMenuChange() {
   const previousSnapshot = cloneSnapshot(menuHistory.undo[menuHistory.undo.length - 1]);
   applyMenuSnapshot(previousSnapshot);
   persistMenuHistory();
+  updateUnsavedMenuState();
 }
 
 function redoMenuChange() {
@@ -775,6 +942,7 @@ function redoMenuChange() {
   menuHistory.undo.push(cloneSnapshot(nextSnapshot));
   applyMenuSnapshot(nextSnapshot);
   persistMenuHistory();
+  updateUnsavedMenuState();
 }
 
 function renderArchiveRows() {
@@ -810,10 +978,10 @@ function renderArchiveRows() {
       const id = item.id || `archive-${idx + 1}`;
       ensureArchiveData(id, item, idx);
       return `
-        <div class="mrow" data-id="${id}">
+        <div class="mrow" data-id="${escapeHtml(id)}">
           <div class="mrow-left">
-            <div class="mrow-name">${item.name || 'Archived Drink'}</div>
-            <div class="mrow-desc">${item.desc || item.description || ''}</div>
+            <div class="mrow-name">${escapeHtml(item.name || 'Archived Drink')}</div>
+            <div class="mrow-desc">${escapeHtml(item.desc || item.description || '')}</div>
           </div>
           <span class="mrow-arrow">→</span>
         </div>`;
@@ -821,13 +989,16 @@ function renderArchiveRows() {
 
     return `
       <section class="archive-group">
-        <h3 class="archive-group-title">${category}</h3>
+        <h3 class="archive-group-title">${escapeHtml(category)}</h3>
         <div class="archive-group-rows">${rowsHtml}</div>
       </section>`;
   }).join('');
 
+  // In editor mode a click selects the row instead (bindMenuRowInteractions).
   archiveRows.querySelectorAll('.mrow').forEach(row => {
-    row.addEventListener('click', () => openModal(row.dataset.id));
+    row.addEventListener('click', () => {
+      if (!document.body.classList.contains('editor-enabled')) openModal(row.dataset.id);
+    });
   });
 }
 
@@ -897,9 +1068,7 @@ function closeModal() {
 
 function bindMenuRowInteractions() {
   document.querySelectorAll('.mrow').forEach(row => {
-    const isEditorMode = document.body.classList.contains('editor-enabled');
-    row.draggable = isEditorMode;
-    row.onclick = null;
+    row.draggable = false;
     row.onclick = () => {
       if (document.body.classList.contains('editor-enabled')) {
         document.querySelectorAll('.mrow').forEach(item => {
@@ -909,98 +1078,244 @@ function bindMenuRowInteractions() {
       }
       openModal(row.dataset.id);
     };
-
-    if (!isEditorMode) {
-      row.classList.remove('dragging');
-      row.ondragstart = null;
-      row.ondragover = null;
-      row.ondrop = null;
-      row.ondragend = null;
-      return;
-    }
-
-    row.ondragstart = (event) => {
-      row.classList.add('dragging');
-      event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData('text/plain', row.dataset.id || '');
-    };
-
-    row.ondragend = () => {
-      row.classList.remove('dragging');
-      document.querySelectorAll('.menu-section').forEach(section => section.classList.remove('drag-over'));
-    };
-
-    row.ondragover = (event) => {
-      event.preventDefault();
-      document.querySelectorAll('.mrow').forEach(item => item.classList.remove('drop-target'));
-      row.classList.add('drop-target');
-      const section = row.closest('.menu-section');
-      if (section) section.classList.add('drag-over');
-    };
-
-    row.ondragleave = () => {
-      row.classList.remove('drop-target');
-    };
-
-    row.ondrop = (event) => {
-      event.preventDefault();
-      const draggedId = event.dataTransfer.getData('text/plain');
-      if (!draggedId) return;
-
-      const sourceRow = document.querySelector('.mrow[data-id="' + draggedId + '"]');
-      if (!sourceRow || sourceRow === row) return;
-
-      const sourceSection = sourceRow.closest('.menu-section');
-      const targetSection = row.closest('.menu-section');
-      if (!sourceSection || !targetSection) return;
-
-      if (sourceSection === targetSection) {
-        if (sourceRow.nextElementSibling === row) {
-          targetSection.insertBefore(sourceRow, row.nextElementSibling);
-        } else {
-          targetSection.insertBefore(sourceRow, row);
-        }
-      } else {
-        targetSection.insertBefore(sourceRow, row);
-      }
-
-      document.querySelectorAll('.mrow').forEach(item => item.classList.remove('drop-target'));
-      document.querySelectorAll('.menu-section').forEach(section => section.classList.remove('drag-over'));
-      saveMenuState();
-    };
-  });
-
-  document.querySelectorAll('.menu-section').forEach(section => {
-    section.ondragover = (event) => {
-      event.preventDefault();
-      section.classList.add('drag-over');
-    };
-
-    section.ondragleave = () => {
-      section.classList.remove('drag-over');
-    };
-
-    section.ondrop = (event) => {
-      event.preventDefault();
-      const draggedId = event.dataTransfer.getData('text/plain');
-      if (!draggedId) return;
-
-      const draggedRow = document.querySelector('.mrow[data-id="' + draggedId + '"]');
-      if (!draggedRow) return;
-
-      const targetRow = event.target.closest('.mrow');
-      if (targetRow && targetRow.closest('.menu-section') === section) {
-        section.insertBefore(draggedRow, targetRow);
-      } else {
-        section.appendChild(draggedRow);
-      }
-
-      document.querySelectorAll('.mrow').forEach(item => item.classList.remove('drop-target'));
-      section.classList.remove('drag-over');
-      saveMenuState();
-    };
   });
 }
+
+// ── Drag to reorder / move drinks between sections (editor mode) ──
+// Built on pointer events so one code path handles mouse and touch. A mouse
+// drag starts after a small move; a touch drag starts after a short
+// press-and-hold, so an ordinary swipe still scrolls the page. The real row
+// moves live as a placeholder while a floating copy follows the pointer.
+// Dropping a current drink on the Archive section archives it; dragging an
+// archived drink into a section restores it at that spot.
+const DRAG_MOUSE_THRESHOLD = 6;
+const DRAG_TOUCH_HOLD_MS = 280;
+const DRAG_TOUCH_SLOP = 10;
+const DRAG_AUTOSCROLL_EDGE = 70;
+
+let menuDrag = null;
+let suppressRowClickUntil = 0;
+
+function onMenuRowPointerDown(event) {
+  if (!document.body.classList.contains('editor-enabled') || menuDrag) return;
+  if (event.pointerType === 'mouse' && event.button !== 0) return;
+  const row = event.target.closest('#panel-current .mrow');
+  if (!row) return;
+
+  menuDrag = {
+    row,
+    pointerId: event.pointerId,
+    pointerType: event.pointerType,
+    startX: event.clientX,
+    startY: event.clientY,
+    x: event.clientX,
+    y: event.clientY,
+    active: false,
+    holdTimer: 0,
+    scrollFrame: 0,
+    ghost: null,
+    offsetX: 0,
+    offsetY: 0,
+    targetSection: null,
+    fromArchive: !!row.closest('#archiveRows'),
+    originParent: row.parentNode,
+    originNext: row.nextSibling,
+  };
+
+  if (event.pointerType !== 'mouse') {
+    menuDrag.holdTimer = setTimeout(startMenuDrag, DRAG_TOUCH_HOLD_MS);
+  }
+
+  window.addEventListener('pointermove', onMenuDragPointerMove);
+  window.addEventListener('pointerup', onMenuDragPointerUp);
+  window.addEventListener('pointercancel', cancelMenuDrag);
+}
+
+function onMenuDragPointerMove(event) {
+  const drag = menuDrag;
+  if (!drag || event.pointerId !== drag.pointerId) return;
+  drag.x = event.clientX;
+  drag.y = event.clientY;
+
+  if (!drag.active) {
+    const distance = Math.hypot(drag.x - drag.startX, drag.y - drag.startY);
+    if (drag.pointerType === 'mouse') {
+      if (distance >= DRAG_MOUSE_THRESHOLD) startMenuDrag();
+    } else if (distance > DRAG_TOUCH_SLOP) {
+      endMenuDrag(); // moved before the hold finished — it's a scroll, not a drag
+    }
+    return;
+  }
+
+  event.preventDefault();
+  updateMenuDrag();
+}
+
+function startMenuDrag() {
+  const drag = menuDrag;
+  if (!drag || drag.active) return;
+  clearTimeout(drag.holdTimer);
+  drag.active = true;
+
+  const rect = drag.row.getBoundingClientRect();
+  drag.offsetX = drag.startX - rect.left;
+  drag.offsetY = drag.startY - rect.top;
+
+  const ghost = drag.row.cloneNode(true);
+  ghost.classList.remove('is-selected', 'dragging');
+  ghost.classList.add('mrow-drag-ghost');
+  ghost.removeAttribute('data-id');
+  ghost.style.width = `${rect.width}px`;
+  document.body.appendChild(ghost);
+  drag.ghost = ghost;
+
+  drag.row.classList.add('dragging');
+  document.body.classList.add('menu-dragging');
+  if (drag.pointerType === 'touch' && navigator.vibrate) navigator.vibrate(10);
+
+  updateMenuDrag();
+  drag.scrollFrame = requestAnimationFrame(autoScrollMenuDrag);
+}
+
+function updateMenuDrag() {
+  const drag = menuDrag;
+  if (!drag || !drag.active) return;
+
+  drag.ghost.style.transform = `translate(${drag.x - drag.offsetX}px, ${drag.y - drag.offsetY}px)`;
+
+  const hit = document.elementFromPoint(drag.x, drag.y);
+  const section = hit ? hit.closest('#panel-current .menu-section') : null;
+  if (!section) return; // in a gap between sections — keep the last position
+
+  if (section !== drag.targetSection) {
+    if (drag.targetSection) drag.targetSection.classList.remove('drag-over');
+    section.classList.add('drag-over');
+    drag.targetSection = section;
+  }
+
+  if (section.id === 'archiveSection') {
+    // Nothing reorders inside Archive; park the row back where it started
+    // until it's dropped (archived) or dragged back out.
+    if (drag.row.parentNode !== drag.originParent || drag.row.nextSibling !== drag.originNext) {
+      drag.originParent.insertBefore(drag.row, drag.originNext);
+    }
+    return;
+  }
+
+  const rows = [...section.querySelectorAll(':scope > .mrow')].filter(item => item !== drag.row);
+  const before = rows.find(item => {
+    const box = item.getBoundingClientRect();
+    return drag.y < box.top + box.height / 2;
+  }) || null;
+
+  if (before) {
+    if (drag.row.nextElementSibling !== before) section.insertBefore(drag.row, before);
+  } else if (section.lastElementChild !== drag.row) {
+    section.appendChild(drag.row);
+  }
+}
+
+function autoScrollMenuDrag() {
+  const drag = menuDrag;
+  if (!drag || !drag.active) return;
+
+  let delta = 0;
+  if (drag.y < DRAG_AUTOSCROLL_EDGE) {
+    delta = -Math.ceil((DRAG_AUTOSCROLL_EDGE - drag.y) / 4);
+  } else if (drag.y > window.innerHeight - DRAG_AUTOSCROLL_EDGE) {
+    delta = Math.ceil((drag.y - (window.innerHeight - DRAG_AUTOSCROLL_EDGE)) / 4);
+  }
+
+  if (delta) {
+    window.scrollBy(0, delta);
+    updateMenuDrag();
+  }
+  drag.scrollFrame = requestAnimationFrame(autoScrollMenuDrag);
+}
+
+function endMenuDrag() {
+  const drag = menuDrag;
+  if (!drag) return;
+
+  clearTimeout(drag.holdTimer);
+  cancelAnimationFrame(drag.scrollFrame);
+  if (drag.ghost) drag.ghost.remove();
+  drag.row.classList.remove('dragging');
+  if (drag.targetSection) drag.targetSection.classList.remove('drag-over');
+  document.body.classList.remove('menu-dragging');
+
+  window.removeEventListener('pointermove', onMenuDragPointerMove);
+  window.removeEventListener('pointerup', onMenuDragPointerUp);
+  window.removeEventListener('pointercancel', cancelMenuDrag);
+  menuDrag = null;
+}
+
+function cancelMenuDrag() {
+  const drag = menuDrag;
+  if (!drag) return;
+  if (drag.active) drag.originParent.insertBefore(drag.row, drag.originNext);
+  endMenuDrag();
+}
+
+function onMenuDragPointerUp(event) {
+  const drag = menuDrag;
+  if (!drag || event.pointerId !== drag.pointerId) return;
+  if (!drag.active) {
+    endMenuDrag(); // a plain click/tap — the row's click handler selects it
+    return;
+  }
+
+  // The click that follows pointerup would select/deselect a row — ignore it.
+  suppressRowClickUntil = Date.now() + 400;
+
+  const section = drag.targetSection;
+  const droppedOnArchive = !!section && section.id === 'archiveSection';
+  const moved = drag.row.parentNode !== drag.originParent || drag.row.nextSibling !== drag.originNext;
+  endMenuDrag();
+
+  if (drag.fromArchive) {
+    if (!section || droppedOnArchive || !moved) {
+      drag.originParent.insertBefore(drag.row, drag.originNext);
+      return;
+    }
+    let beforeRow = drag.row.nextElementSibling;
+    while (beforeRow && !beforeRow.classList.contains('mrow')) beforeRow = beforeRow.nextElementSibling;
+    drag.row.remove();
+    restoreArchiveItem(drag.row.dataset.id, section, beforeRow);
+    return;
+  }
+
+  if (droppedOnArchive) {
+    archiveCurrentRow(drag.row);
+    return;
+  }
+
+  if (moved) recordMenuChange();
+}
+
+document.addEventListener('pointerdown', onMenuRowPointerDown);
+
+// Once a touch drag has started, stop the browser from scrolling instead.
+document.addEventListener('touchmove', (event) => {
+  if (menuDrag && menuDrag.active) event.preventDefault();
+}, { passive: false });
+
+// Long-press on touch would otherwise open the context/callout menu.
+document.addEventListener('contextmenu', (event) => {
+  if (menuDrag) event.preventDefault();
+});
+
+document.addEventListener('click', (event) => {
+  if (Date.now() < suppressRowClickUntil && event.target.closest('#panel-current')) {
+    suppressRowClickUntil = 0;
+    event.stopPropagation();
+    event.preventDefault();
+  }
+}, true);
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && menuDrag && menuDrag.active) cancelMenuDrag();
+});
 
 function editSelectedDrink() {
   const selected = document.querySelector('.mrow.is-selected');
@@ -1080,7 +1395,7 @@ function ensureMenuEditorModal() {
         </label>
         <div class="menu-editor-actions">
           <button type="button" class="secondary-btn" id="menuEditorCancel">Cancel</button>
-          <button type="submit">Save Drink</button>
+          <button type="submit">Update Drink</button>
         </div>
       </form>
     </div>
@@ -1090,16 +1405,18 @@ function ensureMenuEditorModal() {
   const preview = modal.querySelector('#menuEditorPreview');
   const imageUrlInput = modal.querySelector('#menuEditorImageUrl');
 
-  fileInput.addEventListener('change', (event) => {
+  fileInput.addEventListener('change', async (event) => {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      preview.src = reader.result;
+    try {
+      const dataUrl = await window.AKO.readImageFileAsDataUrl(file);
+      preview.src = dataUrl;
       preview.classList.add('visible');
-      imageUrlInput.value = reader.result;
-    };
-    reader.readAsDataURL(file);
+      imageUrlInput.value = dataUrl;
+    } catch (error) {
+      console.error('[menu] image read failed:', error);
+      alert('Could not read that image. Try a JPG or PNG.');
+    }
   });
 
   window.AKO.wireModalDismiss(modal, 'menuEditorCancel');
@@ -1132,7 +1449,9 @@ function ensureMenuEditorModal() {
       ingredients: ingredientsValue.length ? ingredientsValue : (base.ingredients || ['House blend']),
       profile: Object.keys(parsedProfile).length ? parsedProfile : (base.profile || { Smooth: 3, Sweet: 3, Bright: 3 }),
       note: noteValue || (base.note || 'Updated in editor mode.'),
-      desc: descriptionValue || (base.desc || base.description || ''),
+      // The form is pre-filled with the current description, so whatever is
+      // in the box now (including empty, to clear it) is what staff intend.
+      desc: descriptionValue,
       image: imageValue || (MENU_IMAGES[id] || 'Pictures/menu/current/custom.jpg'),
       category: base.category || base.cat || 'Current Menu',
     };
@@ -1145,20 +1464,40 @@ function ensureMenuEditorModal() {
       ingredients: record.ingredients,
       profile: record.profile,
       note: record.note,
+      desc: record.desc,
     };
     MENU_IMAGES[id] = record.image;
 
+    // Archived drinks are re-derived from ARCHIVE_MENU_ITEMS on every archive
+    // render, so the edit has to land there too or it would be overwritten.
+    const archiveItem = ARCHIVE_MENU_ITEMS.find(entry => entry.id === id);
+    if (archiveItem) {
+      Object.assign(archiveItem, {
+        name: record.name,
+        desc: record.desc,
+        image: record.image,
+        ingredients: record.ingredients,
+        profile: record.profile,
+        note: record.note,
+      });
+      delete archiveItem.description;
+    }
+
     document.querySelectorAll('.mrow[data-id="' + id + '"]').forEach(row => {
       const nameEl = row.querySelector('.mrow-name');
-      const descEl = row.querySelector('.mrow-desc');
       if (nameEl) nameEl.textContent = record.name;
-      if (descEl) descEl.textContent = record.desc;
+      setMenuRowDescription(row, record.desc);
     });
+
+    if (archiveItem) {
+      renderArchiveRows();
+      bindMenuRowInteractions();
+    }
 
     modal.classList.add('hidden');
     form.reset();
     preview.classList.remove('visible');
-    saveMenuState();
+    recordMenuChange();
   });
 
   document.body.appendChild(modal);
@@ -1178,7 +1517,7 @@ function openMenuEditorForRow(id, source = 'current') {
   form.dataset.editId = id;
   form.dataset.source = source;
   document.getElementById('menuEditorName').value = item.name || '';
-  document.getElementById('menuEditorDescription').value = item.desc || item.description || '';
+  document.getElementById('menuEditorDescription').value = getMenuDrinkDescription(id);
   document.getElementById('menuEditorImageUrl').value = imageValue;
   document.getElementById('menuEditorIngredients').value = Array.isArray(item.ingredients) ? item.ingredients.join(', ') : '';
   document.getElementById('menuEditorProfile').value = item.profile ? Object.entries(item.profile).map(([key, value]) => `${key} ${value}`).join(', ') : '';
@@ -1210,7 +1549,7 @@ function ensureDrinkPromptModal() {
       <textarea id="drinkPromptTextarea" class="drink-prompt-textarea"></textarea>
       <div class="drink-prompt-actions">
         <button type="button" id="drinkPromptCancel" class="secondary-btn">Cancel</button>
-        <button type="button" id="drinkPromptSave">Save Drink</button>
+        <button type="button" id="drinkPromptSave">Add Drink</button>
       </div>
     </div>
   `;
@@ -1236,7 +1575,7 @@ Note: Seasonal favorite with a soft, clean finish`;
     const item = {
       id,
       name: parsed.name || 'Custom Drink',
-      desc: parsed.description || 'Custom menu item',
+      desc: parsed.description || '',
       image: parsed.image || 'Pictures/menu/current/custom.jpg',
       category: parsed.category || 'Current Menu',
       ingredients: parsed.ingredients && parsed.ingredients.length ? parsed.ingredients : ['House blend'],
@@ -1247,30 +1586,22 @@ Note: Seasonal favorite with a soft, clean finish`;
     MENU_IMAGES[id] = item.image;
     MENU_DATA[id] = {
       num: `#${String(Object.keys(MENU_DATA).length + 1).padStart(2, '0')}`,
-      cat: 'Current Menu',
+      cat: item.category,
       name: item.name,
       ingredients: item.ingredients,
       profile: item.profile,
       note: item.note,
+      desc: item.desc,
     };
 
     const currentPanel = document.getElementById('panel-current');
     const menuSection = ensureCurrentMenuSection();
-    const row = document.createElement('div');
-    row.className = 'mrow';
-    row.dataset.id = id;
-    row.innerHTML = `
-      <div class="mrow-left">
-        <div class="mrow-name">${item.name}</div>
-        <div class="mrow-desc">${item.desc}</div>
-      </div>
-      <span class="mrow-arrow">→</span>
-    `;
+    const row = createMenuRowElement({ id, name: item.name, desc: item.desc });
 
-  if (menuSection) menuSection.appendChild(row); else if (currentPanel) currentPanel.appendChild(row);
+    if (menuSection) menuSection.appendChild(row); else if (currentPanel) currentPanel.appendChild(row);
     bindMenuRowInteractions();
     modal.classList.add('hidden');
-    saveMenuState();
+    recordMenuChange();
   });
 
   document.body.appendChild(modal);
@@ -1302,53 +1633,50 @@ function moveSelectedArchiveItem() {
     return;
   }
 
-  const id = selected.dataset.id;
+  restoreArchiveItem(selected.dataset.id, ensureCurrentMenuSection(), null);
+}
+
+// Moves an archived drink onto the current menu, inserted into `section`
+// before `beforeRow` (or at the end). Shared by the "Move to Current" button
+// and drag-and-drop.
+function restoreArchiveItem(id, section, beforeRow) {
   const archiveItem = ARCHIVE_MENU_ITEMS.find(entry => entry.id === id) || null;
   const menuItem = MENU_DATA[id] || {};
   const item = archiveItem || menuItem;
   const target = {
     id: id || item.id || `moved-${Date.now()}`,
     name: item.name || 'Moved Drink',
-    desc: (archiveItem && (archiveItem.desc || archiveItem.description)) || item.desc || item.description || 'Moved from archive.',
+    desc: (archiveItem && (archiveItem.desc || archiveItem.description)) || item.desc || item.description || '',
     image: (archiveItem && archiveItem.image) || item.image || MENU_IMAGES[id] || 'Pictures/menu/current/custom.jpg',
-    category: 'Current Menu',
+    category: (archiveItem && archiveItem.category) || 'Current Menu',
     ingredients: Array.isArray(item.ingredients) && item.ingredients.length ? item.ingredients : ['House blend'],
     profile: item.profile || { Smooth: 3, Sweet: 3, Bright: 3 },
-    note: item.note || 'Moved from archive to current menu.',
+    note: item.note || '',
   };
 
   MENU_IMAGES[target.id] = target.image;
   MENU_DATA[target.id] = {
-    num: `#${String(Object.keys(MENU_DATA).length + 1).padStart(2, '0')}`,
-    cat: 'Current Menu',
+    num: (archiveItem && archiveItem.num) || `#${String(Object.keys(MENU_DATA).length + 1).padStart(2, '0')}`,
+    cat: target.category,
     name: target.name,
     ingredients: target.ingredients,
     profile: target.profile,
     note: target.note,
+    desc: target.desc,
   };
 
   const currentPanel = document.getElementById('panel-current');
-  const menuSection = ensureCurrentMenuSection();
-  const row = document.createElement('div');
-  row.className = 'mrow';
-  row.dataset.id = target.id;
-  row.innerHTML = `
-    <div class="mrow-left">
-      <div class="mrow-name">${target.name}</div>
-      <div class="mrow-desc">${target.desc}</div>
-    </div>
-    <span class="mrow-arrow">→</span>
-  `;
+  const row = createMenuRowElement({ id: target.id, name: target.name, desc: target.desc });
 
-  if (menuSection) menuSection.appendChild(row); else if (currentPanel) currentPanel.appendChild(row);
+  if (section) section.insertBefore(row, beforeRow || null); else if (currentPanel) currentPanel.appendChild(row);
   const archiveIndex = ARCHIVE_MENU_ITEMS.findIndex(entry => entry.id === id);
   if (archiveIndex >= 0) ARCHIVE_MENU_ITEMS.splice(archiveIndex, 1);
 
-  selected.remove();
+  document.querySelector(`#archiveRows .mrow[data-id="${CSS.escape(id)}"]`)?.remove();
   document.querySelectorAll('.mrow').forEach(item => item.classList.remove('is-selected'));
   renderArchiveRows();
   bindMenuRowInteractions();
-  saveMenuState();
+  recordMenuChange();
 }
 
 function moveSelectedCurrentItemToArchive() {
@@ -1358,17 +1686,24 @@ function moveSelectedCurrentItemToArchive() {
     return;
   }
 
+  archiveCurrentRow(selected);
+}
+
+// Moves a current-menu row into the archive. Shared by the "Move to Archive"
+// button and dropping a drink onto the Archive section.
+function archiveCurrentRow(selected) {
   const id = selected.dataset.id;
   const source = MENU_DATA[id] || {};
   const archiveEntry = {
     id: id || `archive-${Date.now()}`,
     name: source.name || selected.querySelector('.mrow-name')?.textContent?.trim() || 'Moved Drink',
-    desc: source.desc || source.description || selected.querySelector('.mrow-desc')?.textContent?.trim() || 'Moved from current menu.',
+    desc: selected.querySelector('.mrow-desc')?.textContent?.trim() || '',
+    num: source.num,
     image: MENU_IMAGES[id] || source.image || 'Pictures/menu/current/custom.jpg',
     category: source.cat || source.category || 'Current Menu (Moved)',
     ingredients: Array.isArray(source.ingredients) && source.ingredients.length ? source.ingredients : ['House blend'],
     profile: source.profile || { Smooth: 3, Sweet: 3, Bright: 3 },
-    note: source.note || 'Moved from current menu to archive.',
+    note: source.note || '',
   };
 
   if (!ARCHIVE_MENU_ITEMS.some(item => item.id === archiveEntry.id)) {
@@ -1383,7 +1718,7 @@ function moveSelectedCurrentItemToArchive() {
   document.querySelectorAll('.mrow').forEach(item => item.classList.remove('is-selected'));
   renderArchiveRows();
   bindMenuRowInteractions();
-  saveMenuState();
+  recordMenuChange();
 }
 
 function deleteSelectedDrink() {
@@ -1414,14 +1749,12 @@ function deleteSelectedDrink() {
     renderArchiveRows();
   }
 
-  saveMenuState();
+  recordMenuChange();
 }
 
 function refreshMenuEditorState() {
-  document.querySelectorAll('.mrow').forEach(row => {
-    row.draggable = document.body.classList.contains('editor-enabled');
-    row.classList.toggle('dragging', false);
-  });
+  cancelMenuDrag();
+  updateUnsavedMenuState(); // the toolbar (and its Save button) is rebuilt on every toggle
 
   if (!document.body.classList.contains('editor-enabled')) {
     document.querySelectorAll('.mrow').forEach(row => row.classList.remove('is-selected'));
@@ -1438,6 +1771,9 @@ const menuEditorApi = {
   moveSelectedArchiveItem,
   moveSelectedCurrentItemToArchive,
   publishMenuStateToGitHub,
+  saveMenuChanges,
+  confirmLeaveMenuEditor,
+  createMenuSection,
   undoMenuChange,
   redoMenuChange,
   refreshMenuEditorState,
@@ -1461,6 +1797,9 @@ async function initializeMenuPage() {
 
   initializeMenuHistory();
   bindMenuRowInteractions();
+
+  savedMenuSnapshot = buildMenuSnapshot();
+  updateUnsavedMenuState();
 }
 
 initializeMenuPage();

@@ -163,45 +163,63 @@ html, body {
   background: rgba(248, 248, 247, 0.5);
 }
 
-.mrow.dragging {
-  opacity: 0.5;
-  transform: scale(0.99);
+/* Editor-mode drag and drop (see the drag section of menu.js) */
+body.editor-enabled #panel-current .mrow {
+  cursor: grab;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
-.mrow.drop-target {
-  position: relative;
-  background: rgba(85, 11, 20, 0.04);
-  box-shadow: inset 0 0 0 1px rgba(85, 11, 20, 0.2);
+body.menu-dragging,
+body.menu-dragging * { cursor: grabbing !important; }
+
+body.menu-dragging .mrow:hover { padding-left: 0; background: none; }
+
+/* The real row, left in place as a placeholder while it's dragged. */
+.mrow.dragging,
+body.menu-dragging .mrow.dragging:hover {
+  opacity: 0.35;
+  background: rgba(85, 11, 20, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(85, 11, 20, 0.3);
   border-radius: 10px;
 }
 
-.mrow.drop-target::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 3px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(85,11,20,0), rgba(85,11,20,0.85), rgba(85,11,20,0));
-  transform: translateY(-50%) scaleX(0);
-  transform-origin: center;
-  animation: insertionGlow 0.35s ease forwards;
+/* Empty sections (e.g. just made with "Create Section"): a drop zone for
+   staff, hidden from customers until they have drinks. */
+body.editor-enabled .menu-section:not(#archiveSection):not(:has(.mrow))::after {
+  content: "Drag drinks here";
+  display: block;
+  margin-top: 12px;
+  padding: 22px 12px;
+  border: 1px dashed rgba(85, 11, 20, 0.35);
+  border-radius: 10px;
+  text-align: center;
+  color: var(--taupe);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-@keyframes insertionGlow {
-  0% {
-    transform: translateY(-50%) scaleX(0.2);
-    opacity: 0.2;
-  }
-  50% {
-    transform: translateY(-50%) scaleX(1);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-50%) scaleX(0.9);
-    opacity: 0.8;
-  }
+body:not(.editor-enabled) .menu-section:not(#archiveSection):not(:has(.mrow)) {
+  display: none;
+}
+
+/* The floating copy that follows the pointer. */
+.mrow-drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 10000;
+  margin: 0;
+  padding: 14px 12px;
+  pointer-events: none;
+  background: var(--ivory);
+  border: 1px solid rgba(85, 11, 20, 0.2);
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(85, 11, 20, 0.18);
+  opacity: 0.95;
+  transition: none;
 }
 
 .menu-section.drag-over {

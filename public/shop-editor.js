@@ -214,17 +214,19 @@
 
     // Picking a file just stages it locally as a base64 preview — it isn't
     // committed to GitHub until Publish is clicked (see publishShopCatalogToGitHub).
-    modal.querySelector('#shopItemImageUpload').addEventListener('change', (event) => {
+    modal.querySelector('#shopItemImageUpload').addEventListener('change', async (event) => {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        document.getElementById('shopItemImage').value = reader.result;
+      try {
+        const dataUrl = await window.AKO.readImageFileAsDataUrl(file);
+        document.getElementById('shopItemImage').value = dataUrl;
         const preview = document.getElementById('shopItemImagePreview');
-        preview.src = reader.result;
+        preview.src = dataUrl;
         preview.classList.add('visible');
-      };
-      reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('[shop-editor] image read failed:', error);
+        alert('Could not read that image. Try a JPG or PNG.');
+      }
     });
 
     window.AKO.wireModalDismiss(modal, 'shopItemCancel');
