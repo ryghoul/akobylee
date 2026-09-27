@@ -500,8 +500,8 @@
     return btn;
   }
 
-  // "Publish GitHub" is identical in both toolbars — only which
-  // window.AKOEditor method it calls differs.
+  // Shop toolbar's "Publish GitHub" button (the menu's Save button publishes
+  // on its own).
   function makePublishButton(methodName) {
     const btn = makeToolbarButton('Publish GitHub', async () => {
       if (!window.AKOEditor || typeof window.AKOEditor[methodName] !== 'function') return;
@@ -534,20 +534,18 @@
     const deleteBtn = makeToolbarButton('Delete Selected', () => callEditor('deleteSelectedDrink'));
     const sectionBtn = makeToolbarButton('Create Section', () => callEditor('createMenuSection'));
 
-    // menu.js keeps this button's label/disabled state in sync with whether
-    // there are unsaved changes (see updateUnsavedMenuState).
+    // Saves and (on the live site) publishes to GitHub in one click. menu.js
+    // keeps its label/disabled state in sync (see updateUnsavedMenuState).
     const saveBtn = makeToolbarButton('Saved', () => callEditor('saveMenuChanges'));
     saveBtn.id = 'menuSaveBtn';
     saveBtn.classList.add('editor-save-btn');
-
-    const publishBtn = makePublishButton('publishMenuStateToGitHub');
 
     const exitBtn = makeToolbarButton('Exit Editor', () => {
       if (callEditor('confirmLeaveMenuEditor') === false) return;
       setEditorMode(false);
     });
 
-    toolbar.append(undoBtn, redoBtn, addBtn, editBtn, moveCurrentBtn, moveArchiveBtn, deleteBtn, sectionBtn, saveBtn, publishBtn, exitBtn);
+    toolbar.append(undoBtn, redoBtn, addBtn, editBtn, moveCurrentBtn, moveArchiveBtn, deleteBtn, sectionBtn, saveBtn, exitBtn);
     return toolbar;
   }
 

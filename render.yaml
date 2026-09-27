@@ -7,9 +7,17 @@ services:
     buildCommand: npm install
     startCommand: node server.js
 
+    # The menu/shop snapshots committed by the editors under data/ are backups
+    # only (the live site reads the persistent disk / MongoDB), so commits that
+    # touch nothing else don't need a redeploy.
+    buildFilter:
+      ignoredPaths:
+        - data/**
+
     # Persistent disk for the menu editor's saved snapshot.
     # Mounted outside the repo so it doesn't hide the committed public/ images.
-    # (Image uploads are committed to GitHub, not written to disk.)
+    # Editor image uploads are committed to GitHub and a copy is kept in
+    # UPLOADS_DIR on this disk so they show immediately (no redeploy wait).
     disk:
       name: ako-data
       mountPath: /var/data
@@ -26,8 +34,10 @@ services:
         generateValue: true    # Render auto-generates a secure random value
       - key: MENU_STATE_FILE
         value: /var/data/menu-state.json
+      - key: UPLOADS_DIR
+        value: /var/data/uploads
       - key: MENU_AUTO_PUBLISH
-        value: "0"             # Set to "1" to auto-publish every save to GitHub
+        value: "1"             # Menu editor Save also publishes to GitHub ("0" = save only)
       - key: GITHUB_OWNER
         sync: false            # e.g. ryghoul
       - key: GITHUB_REPO

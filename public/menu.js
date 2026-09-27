@@ -653,12 +653,12 @@ function handleAdminSessionExpired() {
   }
 }
 
-async function postMenuStateToServer(snapshot) {
+async function postMenuStateToServer(snapshot, publish) {
   const response = await fetch(MENU_STATE_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',
-    body: JSON.stringify({ snapshot }),
+    body: JSON.stringify({ snapshot, publish }),
   });
 
   const payload = await response.json().catch(() => ({}));
@@ -674,10 +674,10 @@ async function postMenuStateToServer(snapshot) {
   return payload;
 }
 
-function syncMenuStateToServer(snapshot) {
+function syncMenuStateToServer(snapshot, publish = true) {
   remoteSaveChain = remoteSaveChain
     .catch(() => undefined)
-    .then(() => postMenuStateToServer(snapshot));
+    .then(() => postMenuStateToServer(snapshot, publish));
 
   remoteSaveChain.catch(error => {
     console.error('[menu] shared save failed:', error);
@@ -692,16 +692,36 @@ function syncMenuStateToServer(snapshot) {
 // confirmed, so undoing back to the saved state counts as clean.
 let savedMenuSnapshot = null;
 let menuHasUnsavedChanges = false;
+let menuPublishOnSave = false;
+let menuPublishPending = false; // saved, but the GitHub publish step failed
 
 function updateUnsavedMenuState() {
   menuHasUnsavedChanges = !!savedMenuSnapshot && !snapshotsEqual(buildMenuSnapshot(), savedMenuSnapshot);
 
   const saveBtn = document.getElementById('menuSaveBtn');
   if (saveBtn && !saveBtn.dataset.busy) {
-    saveBtn.textContent = menuHasUnsavedChanges ? 'Save Changes' : 'Saved';
-    saveBtn.disabled = !menuHasUnsavedChanges;
-    saveBtn.classList.toggle('has-unsaved', menuHasUnsavedChanges);
+    const needsAction = menuHasUnsavedChanges || menuPublishPending;
+    if (menuHasUnsavedChanges) {
+      saveBtn.textContent = menuPublishOnSave ? 'Save & Publish' : 'Save Changes';
+    } else {
+      saveBtn.textContent = menuPublishPending ? 'Retry Publish' : 'Saved';
+    }
+    saveBtn.disabled = !needsAction;
+    saveBtn.classList.toggle('has-unsaved', needsAction);
   }
+}
+
+// Whether Save also publishes to GitHub — the server's MENU_AUTO_PUBLISH
+// setting, on for the live site and off for local testing.
+async function refreshMenuPublishSetting() {
+  try {
+    const response = await fetch('/api/admin/status', { credentials: 'same-origin', cache: 'no-store' });
+    const payload = await response.json().catch(() => ({}));
+    menuPublishOnSave = !!payload.menuPublishOnSave;
+  } catch {
+    menuPublishOnSave = false;
+  }
+  updateUnsavedMenuState();
 }
 
 function recordMenuChange() {
@@ -725,23 +745,61 @@ function recordMenuChange() {
 
 // Sends the current on-screen menu to the server and makes it the new
 // saved baseline. Throws on failure.
-async function commitMenuToServer() {
+async function commitMenuToServer(publish) {
   const snapshot = buildMenuSnapshot();
-  await syncMenuStateToServer(cloneSnapshot(snapshot));
+  const payload = await syncMenuStateToServer(cloneSnapshot(snapshot), publish);
   savedMenuSnapshot = snapshot;
   updateUnsavedMenuState();
+  return payload;
 }
 
+// Uploads any picked photos as real image files so the published snapshot
+// references paths, not base64 blobs. Returns an error message, or null.
+async function uploadStagedMenuImages() {
+  try {
+    await resolveStagedImagesToGitHub();
+    return null;
+  } catch (error) {
+    return error.message || 'Image upload failed.';
+  }
+}
+
+// The toolbar's single Save button. On the live site (publish-on-save on)
+// it saves and publishes to GitHub in one go; locally it only saves. If the
+// save works but publishing fails, changes are still live and the button
+// turns into "Retry Publish".
 async function saveMenuChanges() {
   const saveBtn = document.getElementById('menuSaveBtn');
-  if (saveBtn) {
+  const setBusy = label => {
+    if (!saveBtn) return;
     saveBtn.dataset.busy = '1';
     saveBtn.disabled = true;
-    saveBtn.textContent = 'Saving...';
-  }
+    saveBtn.textContent = label;
+  };
 
   try {
-    await commitMenuToServer();
+    if (!menuHasUnsavedChanges) {
+      if (menuPublishPending) await retryMenuPublish(setBusy);
+      return true;
+    }
+
+    let publishError = null;
+    if (menuPublishOnSave) {
+      setBusy('Uploading photos...');
+      publishError = await uploadStagedMenuImages();
+    }
+
+    setBusy(menuPublishOnSave ? 'Saving & publishing...' : 'Saving...');
+    const shouldPublish = menuPublishOnSave && !publishError;
+    const payload = await commitMenuToServer(shouldPublish);
+    if (shouldPublish && !payload.published) {
+      publishError = payload.publishError || 'GitHub publish failed.';
+    }
+
+    menuPublishPending = menuPublishOnSave && !!publishError;
+    if (publishError) {
+      alert(`Your changes are saved and live on the site, but publishing to GitHub failed:\n\n${publishError}\n\nClick "Retry Publish" to try again.`);
+    }
     return true;
   } catch (error) {
     alert(`Could not save your menu changes: ${error.message}`);
@@ -750,6 +808,30 @@ async function saveMenuChanges() {
     if (saveBtn) delete saveBtn.dataset.busy;
     updateUnsavedMenuState();
   }
+}
+
+async function retryMenuPublish(setBusy) {
+  setBusy('Uploading photos...');
+  const uploadError = await uploadStagedMenuImages();
+  if (uploadError) {
+    alert(`Publishing to GitHub failed:\n\n${uploadError}`);
+    return;
+  }
+
+  // Uploading may have swapped photos for file paths — save that first.
+  setBusy('Publishing...');
+  await commitMenuToServer(false);
+  const response = await fetch(MENU_PUBLISH_URL, { method: 'POST', credentials: 'same-origin' });
+  const payload = await response.json().catch(() => ({}));
+  if (response.status === 401) {
+    handleAdminSessionExpired();
+    throw new Error(payload.error || 'Your staff session expired.');
+  }
+  if (!response.ok || !payload.ok) {
+    alert(`Publishing to GitHub failed:\n\n${payload.error || 'Unknown error.'}`);
+    return;
+  }
+  menuPublishPending = false;
 }
 
 function discardMenuChanges() {
@@ -780,7 +862,7 @@ document.addEventListener('keydown', (event) => {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's'
     && document.body.classList.contains('editor-enabled')) {
     event.preventDefault();
-    if (menuHasUnsavedChanges) saveMenuChanges();
+    if (menuHasUnsavedChanges || menuPublishPending) saveMenuChanges();
   }
 });
 
@@ -891,30 +973,6 @@ async function resolveStagedImagesToGitHub() {
   for (const item of ARCHIVE_MENU_ITEMS) {
     if (item.image) item.image = await resolve(item.id || 'archive', item.image);
   }
-}
-
-async function publishMenuStateToGitHub() {
-  await resolveStagedImagesToGitHub();
-  await commitMenuToServer(); // publishing also saves any unsaved changes
-
-  const response = await fetch(MENU_PUBLISH_URL, {
-    method: 'POST',
-    credentials: 'same-origin',
-  });
-
-  const payload = await response.json().catch(() => ({}));
-  if (response.status === 401) {
-    handleAdminSessionExpired();
-    throw new Error(payload.error || 'Your staff session expired.');
-  }
-
-  if (!response.ok || !payload.ok) {
-    throw new Error(payload.error || 'GitHub publish failed.');
-  }
-
-  const commitSha = payload.publishResult?.commitSha;
-  alert(commitSha ? `Published to GitHub. Commit ${commitSha.slice(0, 7)}.` : 'Published to GitHub.');
-  return payload;
 }
 
 function undoMenuChange() {
@@ -1755,6 +1813,7 @@ function deleteSelectedDrink() {
 function refreshMenuEditorState() {
   cancelMenuDrag();
   updateUnsavedMenuState(); // the toolbar (and its Save button) is rebuilt on every toggle
+  if (document.body.classList.contains('editor-enabled')) refreshMenuPublishSetting();
 
   if (!document.body.classList.contains('editor-enabled')) {
     document.querySelectorAll('.mrow').forEach(row => row.classList.remove('is-selected'));
@@ -1770,7 +1829,6 @@ const menuEditorApi = {
   deleteSelectedDrink,
   moveSelectedArchiveItem,
   moveSelectedCurrentItemToArchive,
-  publishMenuStateToGitHub,
   saveMenuChanges,
   confirmLeaveMenuEditor,
   createMenuSection,

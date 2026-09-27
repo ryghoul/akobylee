@@ -68,6 +68,10 @@ if (IS_PRODUCTION && !ADMIN_SESSION_SECRET) {
 
 const DATA_DIR = path.resolve(__dirname, 'data');
 const MENU_STATE_FILE = process.env.MENU_STATE_FILE || path.join(DATA_DIR, 'menu-state.json');
+// Copies of editor-uploaded images, served alongside public/ so a new photo
+// works immediately instead of waiting for the deploy that includes its
+// GitHub commit. Point this at the persistent disk in production.
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(DATA_DIR, 'uploads');
 
 console.log('[STATIC ROOT]', STATIC_ROOT);
 console.log('[BASE URL]', PUBLIC_BASE_URL);
@@ -121,6 +125,7 @@ app.use(express.urlencoded({ extended: false }));
 // base64 adds ~33% overhead on top of the 5MB image cap enforced there.
 app.use(express.json({ limit: '8mb' }));
 app.use(express.static(STATIC_ROOT, { fallthrough: true }));
+app.use(express.static(UPLOADS_DIR, { fallthrough: true }));
 
 const exists = p => { try { return fs.existsSync(p); } catch { return false; } };
 
@@ -309,9 +314,17 @@ if (!IS_PRODUCTION) {
 }
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
+// When on, the menu editor's Save button also publishes to GitHub.
+const MENU_PUBLISH_ON_SAVE = process.env.MENU_AUTO_PUBLISH === '1';
+
 app.get('/api/admin/status', (req, res) => {
   const session = readAdminSession(req);
-  res.json({ ok: true, authenticated: !!session, username: session?.username || null });
+  res.json({
+    ok: true,
+    authenticated: !!session,
+    username: session?.username || null,
+    menuPublishOnSave: !!session && MENU_PUBLISH_ON_SAVE,
+  });
 });
 
 app.post('/api/admin/login', (req, res) => {
@@ -356,7 +369,9 @@ app.post('/api/menu-state', requireAdmin, async (req, res) => {
     let publishResult = null;
     let publishError = null;
 
-    if (process.env.MENU_AUTO_PUBLISH === '1') {
+    // The client sends publish:false when it couldn't upload staged images,
+    // so a snapshot full of base64 blobs never gets committed.
+    if (MENU_PUBLISH_ON_SAVE && req.body?.publish !== false) {
       try {
         publishResult = await publishMenuSnapshotToGitHub(snapshot);
         published = true;
@@ -1023,6 +1038,16 @@ app.post('/api/github/upload-image', requireAdmin, async (req, res) => {
       base64Data,
       `Upload image ${uniqueName} (${new Date().toISOString()})`
     );
+
+    // The running server only gets committed files on its next deploy, so
+    // until then the new path would 404 — keep a served copy in UPLOADS_DIR.
+    try {
+      const localPath = path.join(UPLOADS_DIR, folder, uniqueName);
+      ensureDir(path.dirname(localPath));
+      fs.writeFileSync(localPath, Buffer.from(base64Data, 'base64'));
+    } catch (writeError) {
+      console.warn('[github] could not write local copy of uploaded image:', writeError.message);
+    }
 
     res.json({ ok: true, path: `${folder}/${uniqueName}`, publishResult });
   } catch (e) {
