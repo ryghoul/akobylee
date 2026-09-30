@@ -104,12 +104,6 @@ html, body {
   display: block;
 }
 
-.archive-empty {
-  font-size: 0.82rem;
-  color: var(--taupe);
-  margin: 8px 0 0;
-}
-
 .archive-group {
   margin-bottom: clamp(32px, 5vw, 52px);
 }
@@ -327,8 +321,8 @@ body:not(.editor-enabled) .menu-section:not(#archiveSection):not(:has(.mrow)) {
   margin-bottom: 16px;
 }
 
-#archiveSection.open .archive-rows {
-  max-height: 2000px; /* tall enough for any list */
+body:not(.editor-enabled) #archiveSection.is-empty {
+  display: none;
 }
 
 /* Muted style for archived rows */
@@ -545,7 +539,6 @@ body:not(.editor-enabled) .menu-section:not(#archiveSection):not(:has(.mrow)) {
 /* -----------ACCENT ------------*/
 .menu-wrap {
   position: relative;
-  overflow-x: clip;
 }
 
 .menu-accent {

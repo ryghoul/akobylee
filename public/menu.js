@@ -40,12 +40,12 @@ const MENU_IMAGES = {
 };
 
 const MENU_DATA = {
-  'sticky-rice':      { num:'#01', cat:'Special',          name:'"Sticky Rice" Pureh Tea',         ingredients:['2019 Puerh Tea','Oat Milk','Brown Sugar', 'Mango Stick'],                                             profile:{Silky:4,Malty:5,Sweet:4},      note:'Earthy puerh layered with toasted rice warmth and creamy oat texture. The mango stick softens the finish with a subtle tropical sweetness.' },
+  'sticky-rice':      { num:'#01', cat:'Special',          name:'"Sticky Rice" Puerh Tea',         ingredients:['2019 Puerh Tea','Oat Milk','Brown Sugar', 'Mango Stick'],                                             profile:{Silky:4,Malty:5,Sweet:4},      note:'Earthy puerh layered with toasted rice warmth and creamy oat texture. The mango stick softens the finish with a subtle tropical sweetness.' },
   'milk-tea':         { num:'#02', cat:'Special',          name:'Milk Tea - Red Tea',              ingredients:['Jin Hao Red Tea','Brown Sugar','Salted Vanilla Cream', 'Nutmeg'],                                     profile:{Nutty:3,Chocolate:4,Creamy:4}, note:'Deep red tea balanced with brown sugar and a salted vanilla cream top. Smooth, rich, and comforting with a warm spice finish.' },
   'yuja-ade':         { num:'#03', cat:'Special',          name:'Yuja Ade',                        ingredients:['Yuzu and Honey Marmalade','Calamansi','Sparkling', 'Mint'],                                           profile:{Citrus:5,Sweet:4,Light:5},     note:'Bright yuzu and calamansi lifted with sparkling citrus and cooling mint. Sweet, sharp, and refreshing from the first sip.' },
-  'matcha-latte':     { num:'#04', cat:'Special',          name:'Matcha Latte',                    ingredients:['Uji Sourced Matcha','Minor Figures Oat Milk','Brown Sugar'],                                          profile:{Velvety:4,Smoth:4,Rich:5},     note:'Stone-ground Uji matcha whisked smooth with oat milk and brown sugar. Rich, creamy, and balanced with a clean grassy finish.' },
+  'matcha-latte':     { num:'#04', cat:'Special',          name:'Matcha Latte',                    ingredients:['Uji Sourced Matcha','Minor Figures Oat Milk','Brown Sugar'],                                          profile:{Velvety:4,Smooth:4,Rich:5},     note:'Stone-ground Uji matcha whisked smooth with oat milk and brown sugar. Rich, creamy, and balanced with a clean grassy finish.' },
   'strawberry-fizz':  { num:'#05', cat:'Seasonal',         name:'Strawberry Fizz',                 ingredients:['42 HR Strawberry Syrup','Calamansi','Sparkling Yuzu and Calamansi Foam', 'Macerated Strawberries'],   profile:{Fruity:4,Bright:5,Sweet:3},    note:'House strawberry syrup shaken with calamansi and topped with sparkling citrus foam. Fruity, fizzy, and made for warm afternoons.' },
-  'matcha-cortdo':    { num:'#06', cat:'Matcha',           name:'Matcha Cortdo',                   ingredients:['Uji Sourced Matcha'],                                                                                 profile:{Delicate:5,Smooth:4,Sweet:3},   note:'A concentrated matcha drink with bold roasted depth and a velvety body. Small, smooth, and quietly intense.' },
+  'matcha-cortdo':    { num:'#06', cat:'Matcha',           name:'Matcha Cortado',                   ingredients:['Uji Sourced Matcha'],                                                                                 profile:{Delicate:5,Smooth:4,Sweet:3},   note:'A concentrated matcha drink with bold roasted depth and a velvety body. Small, smooth, and quietly intense.' },
   'matcha-tea':       { num:'#07', cat:'Matcha',           name:'Matcha Tea',                      ingredients:['Uji Sourced Matcha'],                                                                                 profile:{Classic:5,Sweet:4,Light:5},    note:'Pure ceremonial-grade matcha prepared traditionally. Clean vegetal notes with a naturally sweet and lingering finish.' },
   'matcha-ade':       { num:'#08', cat:'Matcha',           name:'Matcha Calamansi Ade',            ingredients:['Uji Sourced Matcha','Calamansi'],                                                                     profile:{Bold:4,Sweet:4,Crisp:5},    note:'Bright calamansi citrus layered beneath smooth Uji matcha. Refreshing, vibrant, and slightly sweet with a crisp finish.' },
   /*ARCHIVE*/
@@ -352,6 +352,7 @@ function buildDots(level, max = 5) {
 
 const overlay    = document.getElementById('modalOverlay');
 const modalImg   = document.getElementById('modalImg');
+const modalImgWrap = modalImg.closest('.modal-img-wrap');
 const modalNum   = document.getElementById('modalNum');
 const modalCat   = document.getElementById('modalCat');
 const modalName  = document.getElementById('modalName');
@@ -379,6 +380,16 @@ function getCurrentDrinkNameSet() {
     names.add(normalizeName(item.textContent));
   });
   return names;
+}
+
+// Next "#NN" after the highest one in use. Archived drinks use "#A1"-style
+// numbers, so they don't push new drinks to "#35".
+function nextDrinkNumber() {
+  const highest = Object.values(MENU_DATA).reduce((max, data) => {
+    const match = /^#(\d+)$/.exec((data && data.num) || '');
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 0);
+  return `#${String(highest + 1).padStart(2, '0')}`;
 }
 
 function ensureArchiveData(id, item, num) {
@@ -1019,8 +1030,11 @@ function renderArchiveRows() {
     uniqueArchived.push(item);
   });
 
+  // An empty archive is hidden from customers (see .is-empty in menu.css);
+  // staff still see it in the editor so drinks can be dropped onto it.
+  archiveRows.closest('#archiveSection')?.classList.toggle('is-empty', !uniqueArchived.length);
   if (!uniqueArchived.length) {
-    archiveRows.innerHTML = '<p class="archive-empty">No archived drinks yet. Paste your old menu code and I will auto-format it here.</p>';
+    archiveRows.innerHTML = '';
     return;
   }
 
@@ -1094,7 +1108,11 @@ function openModal(id) {
   const d = MENU_DATA[id];
   if (!d) return;
 
-  modalImg.src          = MENU_IMAGES[id] || '';
+  // Hide the photo area (instead of a broken-image icon) when a drink has no
+  // photo or its file is missing.
+  const imgSrc = MENU_IMAGES[id] || '';
+  modalImgWrap.hidden   = !imgSrc;
+  modalImg.src          = imgSrc;
   modalImg.alt          = d.name;
   modalNum.textContent  = d.num;
   modalCat.textContent  = d.cat;
@@ -1104,24 +1122,25 @@ function openModal(id) {
   modalGrid.innerHTML = `
     <div>
       <div class="modal-field-label">Ingredients</div>
-      <div class="modal-field-val">${d.ingredients.join('<br>')}</div>
+      <div class="modal-field-val">${(d.ingredients || []).map(escapeHtml).join('<br>')}</div>
     </div>
     <div>
       <div class="modal-field-label">Profile</div>
-      ${Object.entries(d.profile).map(([k, v]) => `
+      ${Object.entries(d.profile || {}).map(([k, v]) => `
         <div class="modal-profile-row">
-          <span class="modal-profile-key">${k}</span>
+          <span class="modal-profile-key">${escapeHtml(k)}</span>
           <span class="modal-dots">${buildDots(v)}</span>
         </div>`).join('')}
     </div>`;
 
   overlay.classList.add('open');
-  document.body.style.overflow = 'hidden';
+  // menu.css sets overflow on html/body with !important, so the lock needs it too.
+  document.documentElement.style.setProperty('overflow', 'hidden', 'important');
 }
 
 function closeModal() {
   overlay.classList.remove('open');
-  document.body.style.overflow = '';
+  document.documentElement.style.removeProperty('overflow');
 }
 
 function bindMenuRowInteractions() {
@@ -1501,7 +1520,7 @@ function ensureMenuEditorModal() {
 
     const base = MENU_DATA[id] || {};
     const record = {
-      num: base.num || `#${String(Object.keys(MENU_DATA).length + 1).padStart(2, '0')}`,
+      num: base.num || nextDrinkNumber(),
       cat: base.cat || (source === 'archive' ? 'Archive' : 'Current Menu'),
       name: nameValue,
       ingredients: ingredientsValue.length ? ingredientsValue : (base.ingredients || ['House blend']),
@@ -1643,7 +1662,7 @@ Note: Seasonal favorite with a soft, clean finish`;
 
     MENU_IMAGES[id] = item.image;
     MENU_DATA[id] = {
-      num: `#${String(Object.keys(MENU_DATA).length + 1).padStart(2, '0')}`,
+      num: nextDrinkNumber(),
       cat: item.category,
       name: item.name,
       ingredients: item.ingredients,
@@ -1714,7 +1733,7 @@ function restoreArchiveItem(id, section, beforeRow) {
 
   MENU_IMAGES[target.id] = target.image;
   MENU_DATA[target.id] = {
-    num: (archiveItem && archiveItem.num) || `#${String(Object.keys(MENU_DATA).length + 1).padStart(2, '0')}`,
+    num: (archiveItem && archiveItem.num) || nextDrinkNumber(),
     cat: target.category,
     name: target.name,
     ingredients: target.ingredients,
@@ -1863,6 +1882,7 @@ async function initializeMenuPage() {
 initializeMenuPage();
 
 closeBtn.addEventListener('click', closeModal);
+modalImg.addEventListener('error', () => { modalImgWrap.hidden = true; });
 overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
@@ -1870,7 +1890,22 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 const archiveToggle  = document.getElementById('archiveToggle');
 const archiveSection = document.getElementById('archiveSection');
 
+// Animate to the real content height, then drop the cap so a long archive
+// (or rows added by the editor while open) is never clipped.
 archiveToggle.addEventListener('click', () => {
   const isOpen = archiveSection.classList.toggle('open');
   archiveToggle.setAttribute('aria-expanded', isOpen);
+  if (isOpen) {
+    archiveRows.style.maxHeight = `${archiveRows.scrollHeight}px`;
+  } else {
+    archiveRows.style.maxHeight = `${archiveRows.scrollHeight}px`;
+    archiveRows.offsetHeight; // force reflow so the collapse animates
+    archiveRows.style.maxHeight = '0px';
+  }
+});
+
+archiveRows.addEventListener('transitionend', e => {
+  if (e.target === archiveRows && archiveSection.classList.contains('open')) {
+    archiveRows.style.maxHeight = 'none';
+  }
 });
