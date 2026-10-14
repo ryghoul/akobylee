@@ -423,6 +423,8 @@ let menuServerRevision = null;
 let menuSaveConflict = false;
 let recoverableMenuRevision = null;
 let recoverableMenuSnapshot = null;
+// The menu as this tab last saved or loaded it, to describe unsaved changes.
+let lastSavedMenuSnapshot = null;
 let activeMenuDrag = null;
 let menuMovementRetryTimer = null;
 let menuDeletionTarget = null;
@@ -618,9 +620,11 @@ const MENU_IMAGE_ID_PATH_FIXES = {
 };
 
 function repairMenuImagePath(id, imagePath) {
-  const idFixes = Object.hasOwn(MENU_IMAGE_ID_PATH_FIXES, id) ? MENU_IMAGE_ID_PATH_FIXES[id] : {};
-  if (Object.hasOwn(idFixes, imagePath)) return idFixes[imagePath];
-  if (Object.hasOwn(MENU_IMAGE_PATH_FIXES, imagePath)) return MENU_IMAGE_PATH_FIXES[imagePath];
+  // hasOwnProperty.call, not Object.hasOwn, so older Safari (before 15.4) still loads the menu.
+  const has = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+  const idFixes = has(MENU_IMAGE_ID_PATH_FIXES, id) ? MENU_IMAGE_ID_PATH_FIXES[id] : {};
+  if (has(idFixes, imagePath)) return idFixes[imagePath];
+  if (has(MENU_IMAGE_PATH_FIXES, imagePath)) return MENU_IMAGE_PATH_FIXES[imagePath];
   return imagePath;
 }
 
@@ -812,8 +816,36 @@ function retryMenuSave() {
   return syncMenuStateToServer(cloneSnapshot(buildMenuSnapshot()));
 }
 
+// Names the drinks (and whether section placement) differ between two menu snapshots.
+function describeUnsavedMenuChanges(saved, draft) {
+  const drinks = snapshot => snapshot.menuData || {};
+  const drinkView = (snapshot, id) => JSON.stringify([drinks(snapshot)[id] ?? null, (snapshot.menuImages || {})[id] ?? '']);
+  const names = [...new Set([...Object.keys(drinks(saved)), ...Object.keys(drinks(draft))])]
+    .filter(id => drinkView(saved, id) !== drinkView(draft, id))
+    .map(id => drinks(draft)[id]?.name || drinks(saved)[id]?.name || id);
+  const layout = snapshot => JSON.stringify([
+    (snapshot.currentSections || []).map(section => [section.title, (section.rows || []).map(row => row.id)]),
+    snapshot.archiveSections || [],
+    (snapshot.archiveItems || []).map(item => [item?.id, item?.category]),
+  ]);
+  return { names, layoutChanged: layout(saved) !== layout(draft) };
+}
+
+function confirmDiscardingDraft() {
+  if (!lastSavedMenuSnapshot) {
+    return confirm('Using the latest menu discards the unsaved changes in this tab. Continue?');
+  }
+  const { names, layoutChanged } = describeUnsavedMenuChanges(lastSavedMenuSnapshot, buildMenuSnapshot());
+  if (!names.length && !layoutChanged) return true;
+  const lines = names.slice(0, 8).map(name => `• ${name}`);
+  if (names.length > 8) lines.push(`• …and ${names.length - 8} more`);
+  if (layoutChanged) lines.push('• Section or drink placement changes');
+  return confirm(`Using the latest menu discards these unsaved changes:\n${lines.join('\n')}\n\nContinue?`);
+}
+
 async function useLatestMenu() {
   if (!menuSaveConflict || !document.body.classList.contains('editor-enabled')) return;
+  if (!confirmDiscardingDraft()) return;
   // Drain rejected queued saves before clearing the conflict flag.
   await remoteSaveChain.catch(() => undefined);
   const loaded = await loadMenuStateFromServer();
@@ -866,6 +898,7 @@ async function postMenuStateToServer(snapshot) {
   }
 
   menuServerRevision = payload.revision;
+  lastSavedMenuSnapshot = snapshot;
   // Queued edits should recover against the latest acknowledged version.
   accessMenuStorage('setItem', MENU_PENDING_REVISION_KEY, menuServerRevision);
   return payload;
@@ -953,6 +986,7 @@ async function loadMenuStateFromServer() {
     if (!payload.snapshot) return false;
 
     applyMenuSnapshot(payload.snapshot, { persist: true });
+    lastSavedMenuSnapshot = buildMenuSnapshot();
     return true;
   } catch (error) {
     console.warn('[menu] shared load failed:', error);
@@ -1956,7 +1990,9 @@ function createMenuSection() {
       if (result.ok) modal.classList.add('hidden');
     });
     modal.addEventListener('keydown', event => {
-      if (event.key === 'Escape') modal.classList.add('hidden');
+      if (event.key !== 'Escape') return;
+      event.stopPropagation();
+      modal.classList.add('hidden');
     });
     document.body.appendChild(modal);
   }
@@ -2052,7 +2088,10 @@ function requestMenuDeletion(target) {
       deleteMenuTarget(targetToDelete);
     });
     modal.addEventListener('keydown', event => {
-      if (event.key === 'Escape') modal.classList.add('hidden');
+      if (event.key !== 'Escape') return;
+      // Escape cancels this confirmation only; delete mode stays on.
+      event.stopPropagation();
+      modal.classList.add('hidden');
     });
     document.body.appendChild(modal);
   }

@@ -136,9 +136,24 @@ function readJsonFile(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
+// Writes to a temp file, flushes it to disk, then renames it into place, so a
+// crash mid-save leaves the previous file intact instead of a half-written one.
 function writeJsonFile(filePath, value) {
   ensureDir(path.dirname(filePath));
-  fs.writeFileSync(filePath, JSON.stringify(value, null, 2) + '\n', 'utf8');
+  const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    const fd = fs.openSync(tempPath, 'w');
+    try {
+      fs.writeFileSync(fd, JSON.stringify(value, null, 2) + '\n', 'utf8');
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
+    fs.renameSync(tempPath, filePath);
+  } catch (error) {
+    try { fs.unlinkSync(tempPath); } catch { /* already gone */ }
+    throw error;
+  }
 }
 
 function loadSavedMenuSnapshot() {

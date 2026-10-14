@@ -216,3 +216,90 @@ test('server serves a just-committed photo until the deploy ships the real file'
   }
   fs.rmSync(dataDir, { recursive: true, force: true });
 });
+
+test('photo path repair works in browsers without Object.hasOwn (Safari before 15.4)', () => {
+  const context = { Object: { prototype: Object.prototype } };
+  vm.createContext(context);
+  vm.runInContext(slice('const MENU_IMAGE_PATH_FIXES', '\nfunction applyMenuSnapshot('), context);
+  assert.equal(context.Object.hasOwn, undefined);
+  assert.equal(context.repairMenuImagePath('archive-chuhai', 'Pictures/menu/ikebana/CHUHAI.JPG'), 'Pictures/menu/archive/ikebana/chuhai.JPG');
+  assert.equal(context.repairMenuImagePath('archive-hojicha-latte-2025', 'Pictures/menu/fall.wint/ahl.JPG'), 'Pictures/menu/hojicha-latte.JPG');
+  assert.equal(context.repairMenuImagePath('x', 'toString'), 'toString');
+});
+
+test('menu file writes replace the file whole and leave the old file if writing fails', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ako-write-'));
+  const file = path.join(dir, 'nested', 'menu-state.json');
+  const context = { fs, path, process, ensureDir: target => fs.mkdirSync(target, { recursive: true }) };
+  vm.createContext(context);
+  vm.runInContext(serverSource.slice(serverSource.indexOf('function readJsonFile('), serverSource.indexOf('\nfunction loadSavedMenuSnapshot(')), context);
+  context.writeJsonFile(file, { version: 1 });
+  context.writeJsonFile(file, { version: 2 });
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { version: 2 });
+  assert.deepEqual(fs.readdirSync(path.dirname(file)), ['menu-state.json']);
+
+  const circular = {};
+  circular.self = circular;
+  assert.throws(() => context.writeJsonFile(file, circular));
+  assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')), { version: 2 });
+  assert.deepEqual(fs.readdirSync(path.dirname(file)), ['menu-state.json']);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('Escape in the delete confirmation closes it without leaving delete mode', () => {
+  const start = source.indexOf("modal.addEventListener('keydown', event => {", source.indexOf('function requestMenuDeletion('));
+  const handlerSource = source.slice(source.indexOf('event =>', start), source.indexOf('\n    });', start) + 6);
+  const modal = { classList: { hidden: false, add(name) { if (name === 'hidden') this.hidden = true; } } };
+  const context = { modal };
+  vm.createContext(context);
+  const handler = vm.runInContext(`(${handlerSource.replace(/\);$/, '')})`, context);
+  let stopped = false;
+  handler({ key: 'Escape', stopPropagation() { stopped = true; } });
+  assert.equal(modal.classList.hidden, true);
+  assert.equal(stopped, true);
+  stopped = false;
+  handler({ key: 'Enter', stopPropagation() { stopped = true; } });
+  assert.equal(stopped, false);
+});
+
+function discardHarness() {
+  const saved = {
+    menuData: { a: { name: 'Matcha' }, b: { name: 'Hojicha' } }, menuImages: { a: 'a.jpg' },
+    currentSections: [{ title: 'TEA', rows: [{ id: 'a' }, { id: 'b' }] }], archiveSections: ['Unlisted'], archiveItems: [],
+  };
+  const context = { confirm: () => true, lastSavedMenuSnapshot: null, buildMenuSnapshot: () => structuredClone(saved) };
+  vm.createContext(context);
+  vm.runInContext(slice('function describeUnsavedMenuChanges(', '\nasync function useLatestMenu('), context);
+  return { context, saved };
+}
+
+test('Use latest menu lists the drinks and placement changes it would discard', () => {
+  const { context, saved } = discardHarness();
+  const draft = structuredClone(saved);
+  draft.menuData.a.name = 'Matcha Latte';
+  draft.menuData.c = { name: 'New Drink' };
+  delete draft.menuData.b;
+  draft.currentSections[0].rows = [{ id: 'c' }, { id: 'a' }];
+  const changes = context.describeUnsavedMenuChanges(saved, draft);
+  assert.deepEqual(Array.from(changes.names).sort(), ['Hojicha', 'Matcha Latte', 'New Drink']);
+  assert.equal(changes.layoutChanged, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(context.describeUnsavedMenuChanges(saved, structuredClone(saved)))), { names: [], layoutChanged: false });
+
+  let asked = '';
+  context.lastSavedMenuSnapshot = saved;
+  context.buildMenuSnapshot = () => draft;
+  context.confirm = message => { asked = message; return false; };
+  assert.equal(context.confirmDiscardingDraft(), false);
+  assert.match(asked, /• Matcha Latte/);
+  assert.match(asked, /Section or drink placement changes/);
+
+  asked = '';
+  context.buildMenuSnapshot = () => structuredClone(saved);
+  assert.equal(context.confirmDiscardingDraft(), true);
+  assert.equal(asked, '');
+
+  context.lastSavedMenuSnapshot = null;
+  context.confirm = message => { asked = message; return true; };
+  assert.equal(context.confirmDiscardingDraft(), true);
+  assert.match(asked, /discards the unsaved changes in this tab/);
+});

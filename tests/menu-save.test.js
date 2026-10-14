@@ -20,6 +20,7 @@ function harness(storage = new Map()) {
     menuStorageWarning: '', menuPendingBackupAvailable: true,
     MENU_PENDING_SAVE_KEY: 'pending', MENU_PENDING_REVISION_KEY: 'pending-revision',
     menuServerRevision: 'revision-0', menuSaveConflict: false, recoverableMenuRevision: null, MENU_STATE_URL: '/api/menu-state',
+    lastSavedMenuSnapshot: null, confirm: () => true,
     localStorage: {
       setItem: (key, value) => storage.set(key, value),
       getItem: key => storage.get(key) || null,
@@ -304,4 +305,18 @@ test('failed baseline lookup keeps the legacy backup available for another resto
   assert.equal(JSON.parse(storage.get('pending')).menuData.drink.name, 'Legacy draft');
   assert.equal(elements.menuRestoreChanges.hidden, false);
   assert.match(elements.menuSaveMessage.textContent, /backup has been kept/);
+});
+
+test('cancelling Use latest menu keeps the draft, the backup and the conflict', async () => {
+  const { context, storage } = harness();
+  context.fetch = async () => ({ status: 409, ok: false, json: async () => ({ ok: false, error: 'Newer menu exists' }) });
+  await assert.rejects(context.syncMenuStateToServer(snapshot('Draft')));
+  let loads = 0;
+  context.loadMenuStateFromServer = async () => { loads++; return true; };
+  context.confirm = () => false;
+  await context.useLatestMenu();
+  assert.equal(loads, 0);
+  assert.equal(context.menuSaveConflict, true);
+  assert.equal(context.canEditMenu(), false);
+  assert.equal(JSON.parse(storage.get('pending')).menuData.drink.name, 'Draft');
 });
