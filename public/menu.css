@@ -120,9 +120,46 @@ html, body {
   font-size: clamp(1.15rem, 2vw, 1.5rem);
   color: var(--ako-bright-red);
   letter-spacing: 0.04em;
-  margin: 0 0 8px;
-  padding-bottom: 10px;
+  margin: 0;
+}
+
+.archive-group-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
   border-bottom: 1.5px solid rgba(85, 11, 20, 0.18);
+  cursor: pointer;
+  list-style: none;
+}
+
+.archive-group-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.archive-group-toggle::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  margin-right: 4px;
+  border-right: 2px solid var(--ako-bright-red);
+  border-bottom: 2px solid var(--ako-bright-red);
+  transform: rotate(45deg);
+}
+
+.archive-group[open] > .archive-group-toggle::after {
+  transform: rotate(225deg);
+}
+
+.archive-group-toggle:focus-visible {
+  outline: 2px solid var(--ako-bright-red);
+  outline-offset: 4px;
+}
+
+.archive-group-rows {
+  padding-top: 8px;
 }
 
 /* ─────────────────────────────────────────────
@@ -130,6 +167,20 @@ html, body {
 ───────────────────────────────────────────── */
 .menu-section {
   margin-bottom: clamp(40px, 6vw, 64px);
+}
+
+body.editor-enabled .menu-section:not(#archiveSection) {
+  min-height: 88px;
+}
+
+#menuSectionDestination {
+  width: 100%;
+  border: 1px solid rgba(85, 11, 20, 0.2);
+  border-radius: 10px;
+  padding: 11px 12px;
+  font: inherit;
+  color: var(--wine);
+  background: #fff;
 }
 
 .menu-section-title {
@@ -180,7 +231,7 @@ html, body {
   position: absolute;
   left: 0;
   right: 0;
-  top: 50%;
+  top: 0;
   height: 3px;
   border-radius: 999px;
   background: linear-gradient(90deg, rgba(85,11,20,0), rgba(85,11,20,0.85), rgba(85,11,20,0));
@@ -204,7 +255,8 @@ html, body {
   }
 }
 
-.menu-section.drag-over {
+.menu-section.drag-over,
+.archive-group.drag-over {
   outline: 2px dashed rgba(85, 11, 20, 0.7);
   outline-offset: 8px;
   border-radius: 12px;
@@ -298,9 +350,7 @@ html, body {
 }
 
 .archive-rows {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  display: none;
 }
 
 #archiveSection.open .archive-sub {
@@ -310,7 +360,7 @@ html, body {
 }
 
 #archiveSection.open .archive-rows {
-  max-height: 2000px; /* tall enough for any list */
+  display: block;
 }
 
 /* Muted style for archived rows */
@@ -608,4 +658,140 @@ html, body {
   }
   .footer-socials { justify-content: center; }
   .footer-right   { text-align: center; }
+}
+.mrow.drop-after::after {
+  top: 100%;
+}
+
+body.editor-enabled .archive-group-rows:empty {
+  min-height: 48px;
+  border: 1px dashed rgba(85, 11, 20, 0.25);
+  border-radius: 8px;
+}
+
+.menu-save-status {
+  display: none;
+  position: fixed;
+  left: 20px;
+  right: 20px;
+  bottom: 88px;
+  z-index: 450;
+  padding: 12px 16px;
+  border: 1px solid rgba(85, 11, 20, 0.2);
+  border-radius: 12px;
+  background: var(--ivory);
+  color: var(--wine);
+  font-size: 0.85rem;
+  gap: 12px;
+  align-items: center;
+}
+
+body.editor-enabled .menu-save-status:not([hidden]) {
+  display: flex;
+}
+
+.menu-save-status[data-phase="failed"] {
+  border-color: var(--ako-bright-red);
+}
+
+.menu-save-status button {
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border: 1px solid var(--wine);
+  border-radius: 8px;
+  color: var(--wine);
+  background: transparent;
+  font: inherit;
+}
+
+.menu-movement-retry {
+  display: none;
+  position: fixed;
+  top: 100px;
+  right: 20px;
+  max-width: min(360px, calc(100vw - 40px));
+  z-index: 460;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid rgba(85, 11, 20, 0.2);
+  border-radius: 12px;
+  background: var(--ivory);
+  color: var(--wine);
+  box-shadow: 0 8px 24px rgba(85, 11, 20, 0.12);
+  font-size: 0.82rem;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
+}
+
+body.editor-enabled .menu-movement-retry {
+  display: flex;
+}
+
+.menu-movement-retry.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.menu-movement-retry button {
+  cursor: pointer;
+  padding: 6px 10px;
+  border: 1px solid var(--wine);
+  border-radius: 8px;
+  color: var(--wine);
+  background: transparent;
+  font: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-movement-retry {
+    transition: none;
+  }
+}
+
+#menuDeleteButton[aria-pressed="true"] {
+  background: var(--wine);
+  color: var(--ivory);
+}
+
+#menuDeleteModal .menu-editor-actions button {
+  border: 1px solid var(--wine);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font: inherit;
+  background: var(--wine);
+  color: var(--ivory);
+  cursor: pointer;
+}
+
+#menuDeleteModal .menu-editor-actions .secondary-btn {
+  background: transparent;
+  color: var(--wine);
+}
+
+.menu-delete-hint {
+  position: fixed;
+  top: 100px;
+  left: 20px;
+  right: 20px;
+  z-index: 455;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--wine);
+  color: var(--ivory);
+  font-size: 0.82rem;
+  pointer-events: none;
+}
+
+body.menu-delete-mode .mrow:hover,
+body.menu-delete-mode .archive-group:not(:has(.mrow:hover)):hover,
+body.menu-delete-mode .menu-section:not(#archiveSection):not(:has(.mrow:hover)):hover {
+  outline: 2px dashed var(--ako-bright-red);
+  outline-offset: 4px;
+  background: rgba(85, 11, 20, 0.06);
+  cursor: pointer;
 }

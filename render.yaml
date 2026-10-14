@@ -41,7 +41,7 @@ services:
       - key: MONGO_URL
         sync: false            # MongoDB Atlas connection string
       - key: MONGO_DB
-        value: akoshop
+        value: akoshop_staging
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: EMAIL_USER

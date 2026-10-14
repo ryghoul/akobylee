@@ -485,7 +485,10 @@
     const editBtn = makeToolbarButton('Edit Selected', () => callEditor('editSelectedDrink'));
     const moveCurrentBtn = makeToolbarButton('Move to Current', () => callEditor('moveSelectedArchiveItem'));
     const moveArchiveBtn = makeToolbarButton('Move to Archive', () => callEditor('moveSelectedCurrentItemToArchive'));
-    const deleteBtn = makeToolbarButton('Delete Selected', () => callEditor('deleteSelectedDrink'));
+    const deleteBtn = makeToolbarButton('Delete', () => callEditor('toggleMenuDeleteMode'));
+    deleteBtn.id = 'menuDeleteButton';
+    deleteBtn.setAttribute('aria-pressed', 'false');
+    deleteBtn.title = 'Toggle delete mode, then click a drink or section';
     const sectionBtn = makeToolbarButton('Create Section', () => callEditor('createMenuSection'));
 
     const publishBtn = makePublishButton('publishMenuStateToGitHub');

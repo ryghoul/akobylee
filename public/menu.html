@@ -406,6 +406,20 @@
 
 </div><!-- /.home -->
 
+<div id="menuMovementRetry" class="menu-movement-retry" inert>
+  <span id="menuMovementRetryMessage" role="status" aria-live="polite" aria-atomic="true"></span>
+  <button id="menuMovementRetryButton" type="button">Retry</button>
+</div>
+<p id="menuDeleteHint" class="menu-delete-hint" role="status" hidden>Delete mode: click a drink or section. Click Delete again or press Escape to exit.</p>
+
+<div id="menuSaveStatus" class="menu-save-status" hidden>
+  <span id="menuSaveMessage" role="status" aria-live="polite" aria-atomic="true"></span>
+  <button id="menuRetrySave" type="button" hidden>Retry save</button>
+  <button id="menuRestoreChanges" type="button" hidden>Restore changes</button>
+  <button id="menuDiscardRecovery" type="button" hidden>Use current menu</button>
+  <button id="menuLoadLatest" type="button" hidden>Use latest menu</button>
+</div>
+
 <script src="script.js"></script>
 <script src="menu.js"></script>
 </body>

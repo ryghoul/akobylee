@@ -146,6 +146,10 @@ function loadSavedMenuSnapshot() {
   return readJsonFile(MENU_STATE_FILE);
 }
 
+function getMenuRevision(snapshot) {
+  return crypto.createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
+}
+
 function isValidMenuSnapshot(snapshot) {
   return isPlainObject(snapshot)
     && isPlainObject(snapshot.menuData)
@@ -335,8 +339,7 @@ app.post('/api/admin/logout', (_req, res) => {
 app.get('/api/menu-state', (_req, res) => {
   try {
     const snapshot = loadSavedMenuSnapshot();
-    if (!snapshot) return res.json({ ok: true, snapshot: null });
-    res.json({ ok: true, snapshot });
+    res.json({ ok: true, snapshot, revision: getMenuRevision(snapshot) });
   } catch (error) {
     console.error('[menu-state] load error:', error);
     res.status(500).json({ ok: false, error: 'Failed to load menu state.' });
@@ -350,7 +353,14 @@ app.post('/api/menu-state', requireAdmin, async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Invalid menu state payload.' });
     }
 
-    writeJsonFile(MENU_STATE_FILE, snapshot);
+    const currentRevision = getMenuRevision(loadSavedMenuSnapshot());
+    const revision = getMenuRevision(snapshot);
+    // Check and write synchronously before publishing yields to another request.
+    // Identical retries are safe when the original response was lost.
+    if (req.body.baseRevision !== currentRevision && revision !== currentRevision) {
+      return res.status(409).json({ ok: false, code: 'MENU_CONFLICT', error: 'Another editor saved a newer menu. Load the latest menu before editing again.' });
+    }
+    if (revision !== currentRevision) writeJsonFile(MENU_STATE_FILE, snapshot);
 
     let published = false;
     let publishResult = null;
@@ -368,6 +378,7 @@ app.post('/api/menu-state', requireAdmin, async (req, res) => {
     res.json({
       ok: true,
       savedAt: new Date().toISOString(),
+      revision,
       published,
       publishResult,
       publishError,
