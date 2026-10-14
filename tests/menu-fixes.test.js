@@ -176,6 +176,7 @@ test('server serves a just-committed photo until the deploy ships the real file'
   const context = {
     fs, path, crypto, Buffer, process, console: { error() {} },
     MENU_STATE_FILE: path.join(dataDir, 'menu-state.json'),
+    SVG_RESPONSE_POLICY: "default-src 'none'",
     exists: p => fs.existsSync(p),
     ensureDir: dir => fs.mkdirSync(dir, { recursive: true }),
     requireAdmin() {},

@@ -130,6 +130,44 @@
     }
   }
 
+  const MAX_SHOP_IMAGE_BYTES = 5 * 1024 * 1024;
+  const STAGED_IMAGE_PREFIX = '/api/staged-images/';
+
+  function showShopItemPreview(src) {
+    const preview = document.getElementById('shopItemImagePreview');
+    if (src) {
+      preview.src = src;
+      preview.classList.add('visible');
+    } else {
+      preview.removeAttribute('src');
+      preview.classList.remove('visible');
+    }
+  }
+
+  // While a picked photo uploads, Save Item waits so the item keeps that photo.
+  function setShopPhotoUpload(form, token) {
+    if (token) form.dataset.uploadToken = token;
+    else delete form.dataset.uploadToken;
+    const submitBtn = document.getElementById('shopItemSubmit');
+    if (!submitBtn) return;
+    submitBtn.disabled = !!token;
+    submitBtn.textContent = token ? 'Uploading photo...' : 'Save Item';
+  }
+
+  async function stageShopImage(dataUrl) {
+    const res = await fetch('/api/staged-images', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ dataUrl }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok || typeof data.path !== 'string') {
+      throw new Error(data.error || (res.status === 413 ? 'That photo is too large.' : 'The photo could not be uploaded.'));
+    }
+    return data.path;
+  }
+
   function ensureShopItemModal() {
     if (document.getElementById('shopItemModal')) return;
 
@@ -212,17 +250,53 @@
       </div>
     `;
 
-    // Picking a file just stages it locally as a base64 preview — it isn't
-    // committed to GitHub until Publish is clicked (see publishShopCatalogToGitHub).
+    // Picking a file stages it on the server right away (so item saves carry a
+    // short /api/staged-images/ URL, not the whole photo). It isn't committed
+    // to GitHub until Publish is clicked (see publishShopCatalogToGitHub).
     modal.querySelector('#shopItemImageUpload').addEventListener('change', (event) => {
-      const file = event.target.files && event.target.files[0];
+      const fileInput = event.target;
+      const file = fileInput.files && fileInput.files[0];
       if (!file) return;
+      const form = document.getElementById('shopItemForm');
+      const imageInput = document.getElementById('shopItemImage');
+      const previousImage = imageInput.value.trim();
+      const reject = message => {
+        fileInput.value = '';
+        alert(message);
+      };
+      if (!IMAGE_MIME_EXTENSIONS[file.type]) {
+        reject('Choose a PNG, JPEG, WebP, GIF, or SVG photo.');
+        return;
+      }
+      if (file.size > MAX_SHOP_IMAGE_BYTES) {
+        reject(`That photo is larger than ${MAX_SHOP_IMAGE_BYTES / (1024 * 1024)}MB. Choose a smaller photo.`);
+        return;
+      }
+
+      const token = `${Date.now()}-${Math.random()}`;
+      setShopPhotoUpload(form, token);
+      const finish = errorMessage => {
+        // The form was reopened or another photo was picked meanwhile.
+        if (form.dataset.uploadToken !== token) return;
+        setShopPhotoUpload(form, null);
+        if (errorMessage) {
+          showShopItemPreview(previousImage);
+          reject(`${errorMessage} The previous photo was kept.`);
+        }
+      };
+
       const reader = new FileReader();
-      reader.onload = () => {
-        document.getElementById('shopItemImage').value = reader.result;
-        const preview = document.getElementById('shopItemImagePreview');
-        preview.src = reader.result;
-        preview.classList.add('visible');
+      reader.onerror = () => finish('The photo could not be read.');
+      reader.onload = async () => {
+        if (form.dataset.uploadToken !== token) return;
+        showShopItemPreview(reader.result);
+        try {
+          const stagedPath = await stageShopImage(reader.result);
+          if (form.dataset.uploadToken === token) imageInput.value = stagedPath;
+          finish('');
+        } catch (error) {
+          finish(error.message || 'The photo could not be uploaded.');
+        }
       };
       reader.readAsDataURL(file);
     });
@@ -240,6 +314,7 @@
     modal.querySelector('#shopItemForm').addEventListener('submit', async (event) => {
       event.preventDefault();
       const form = event.currentTarget;
+      if (form.dataset.uploadToken) return;
       const isEdit = !!form.dataset.editKey;
 
       const productKey = isEdit
@@ -301,6 +376,7 @@
     const form = document.getElementById('shopItemForm');
 
     form.reset();
+    setShopPhotoUpload(form, null);
     delete form.dataset.editKey;
     document.getElementById('shopItemModalTitle').textContent = 'Add Item';
     document.getElementById('shopItemProductKey').disabled = false;
@@ -326,6 +402,7 @@
     const modal = document.getElementById('shopItemModal');
     const form = document.getElementById('shopItemForm');
     form.reset();
+    setShopPhotoUpload(form, null);
     form.dataset.editKey = productKey;
     document.getElementById('shopItemModalTitle').textContent = 'Edit Item';
 
@@ -471,18 +548,21 @@
   // Uploads one product's staged image and updates its Mongo record with the
   // resolved path. GitHub Contents API writes share one branch tip, so callers
   // intentionally publish these in order to avoid competing ref updates.
+  // Handles photos staged on the server and older base64 data: URLs alike.
   async function resolveStagedImageForProduct(product) {
-    const match = /^data:([^;]+);base64,/.exec(product.image || '');
-    if (!match) return;
+    const image = product.image || '';
+    const dataMatch = /^data:([^;]+);base64,/.exec(image);
+    if (!dataMatch && !image.startsWith(STAGED_IMAGE_PREFIX)) return;
 
-    const ext = IMAGE_MIME_EXTENSIONS[match[1]] || 'png';
+    const ext = dataMatch ? (IMAGE_MIME_EXTENSIONS[dataMatch[1]] || 'png') : image.split('.').pop();
     const filename = `${product.productKey.replace(/\|/g, '-')}.${ext}`;
+    const source = dataMatch ? { dataUrl: image } : { stagedImage: image };
 
     const uploadRes = await fetch('/api/github/upload-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ dataUrl: product.image, folder: 'Pictures/merch', filename }),
+      body: JSON.stringify({ ...source, folder: 'Pictures/merch', filename }),
     });
     const uploadData = await uploadRes.json().catch(() => ({}));
     if (!uploadRes.ok || !uploadData.ok) {

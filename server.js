@@ -120,7 +120,18 @@ app.use(express.urlencoded({ extended: false }));
 // request body (not just the dedicated /api/github/upload-image route), and
 // base64 adds ~33% overhead on top of the 5MB image cap enforced there.
 app.use(express.json({ limit: '8mb' }));
-app.use(express.static(STATIC_ROOT, { fallthrough: true }));
+// SVGs can carry scripts that run if one is opened directly (staff can upload
+// SVGs), so their responses may only style themselves and embed data: URIs.
+const SVG_RESPONSE_POLICY = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:";
+app.use(express.static(STATIC_ROOT, {
+  fallthrough: true,
+  setHeaders: (res, filePath) => {
+    if (filePath.toLowerCase().endsWith('.svg')) {
+      res.setHeader('Content-Security-Policy', SVG_RESPONSE_POLICY);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+    }
+  },
+}));
 
 const exists = p => { try { return fs.existsSync(p); } catch { return false; } };
 
@@ -1055,6 +1066,10 @@ app.post('/api/staged-images', requireAdmin, (req, res) => {
       const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
       fs.writeFileSync(tempPath, buffer);
       fs.renameSync(tempPath, filePath);
+    } else {
+      // Picked again: restart its age so cleanup treats it as recently used.
+      const now = new Date();
+      fs.utimesSync(filePath, now, now);
     }
     res.json({ ok: true, path: STAGED_IMAGE_URL_PREFIX + name });
   } catch (e) {
@@ -1069,7 +1084,7 @@ app.get('/api/staged-images/:name', (req, res) => {
   if (!filePath) return res.status(404).end();
   res.set({
     'X-Content-Type-Options': 'nosniff',
-    'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'",
+    'Content-Security-Policy': SVG_RESPONSE_POLICY,
     'Cache-Control': 'public, max-age=31536000, immutable',
   });
   res.sendFile(filePath, error => {
@@ -1146,12 +1161,58 @@ app.get(['/Pictures/menu/:name', '/Pictures/merch/:name'], (req, res, next) => {
   if (!exists(filePath)) return next();
   res.set({
     'X-Content-Type-Options': 'nosniff',
-    'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'",
+    'Content-Security-Policy': SVG_RESPONSE_POLICY,
   });
   res.sendFile(filePath, error => {
     if (error && !res.headersSent) next();
   });
 });
+
+// Daily cleanup of both photo stores. It only deletes what it can prove is
+// unused: a published copy once the deploy ships the real file, and a staged
+// photo that is old and referenced by neither the saved menu nor any shop
+// product. If the shop database can't be checked, staged photos are kept.
+const STAGED_IMAGE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const LEFTOVER_TEMP_MAX_AGE_MS = 60 * 60 * 1000;
+
+function removeFileQuietly(filePath) {
+  try { fs.unlinkSync(filePath); } catch (error) { console.error('[images] cleanup could not remove', filePath, error.message); }
+}
+
+function fileAgeMs(filePath, now) {
+  try { return now - fs.statSync(filePath).mtimeMs; } catch { return 0; }
+}
+
+async function cleanUpImageStores(now = Date.now()) {
+  for (const folder of ['Pictures/menu', 'Pictures/merch']) {
+    const dir = path.join(PUBLISHED_IMAGE_CACHE_DIR, folder);
+    if (!exists(dir)) continue;
+    for (const name of fs.readdirSync(dir)) {
+      const filePath = path.join(dir, name);
+      const shipped = exists(path.join(STATIC_ROOT, folder, name));
+      const leftoverTemp = name.endsWith('.tmp') && fileAgeMs(filePath, now) > LEFTOVER_TEMP_MAX_AGE_MS;
+      if (shipped || leftoverTemp) removeFileQuietly(filePath);
+    }
+  }
+
+  if (!exists(STAGED_IMAGE_DIR)) return;
+  let references;
+  try {
+    if (mongoose.connection.readyState !== 1) return;
+    const products = await Product.find({ image: { $regex: '^/api/staged-images/' } }, { image: 1 }).lean();
+    const savedMenu = exists(MENU_STATE_FILE) ? fs.readFileSync(MENU_STATE_FILE, 'utf8') : '';
+    references = savedMenu + '\n' + products.map(product => product.image).join('\n');
+  } catch (error) {
+    console.error('[images] cleanup skipped staged photos:', error.message);
+    return;
+  }
+  for (const name of fs.readdirSync(STAGED_IMAGE_DIR)) {
+    const filePath = path.join(STAGED_IMAGE_DIR, name);
+    const isTemp = name.endsWith('.tmp');
+    if (!isTemp && references.includes(name)) continue;
+    if (fileAgeMs(filePath, now) > (isTemp ? LEFTOVER_TEMP_MAX_AGE_MS : STAGED_IMAGE_MAX_AGE_MS)) removeFileQuietly(filePath);
+  }
+}
 
 // ─────────────────────────────────────────────────────────────
 // Inventory API (atomic decrement, no replica set required)
@@ -1189,3 +1250,8 @@ app.use((req, res, next) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server listening on http://0.0.0.0:${PORT}`);
 });
+
+// Photo cleanup: shortly after start (once MongoDB has had time to connect), then daily.
+const runImageCleanup = () => cleanUpImageStores().catch(error => console.error('[images] cleanup failed:', error));
+setTimeout(runImageCleanup, 60 * 1000).unref();
+setInterval(runImageCleanup, 24 * 60 * 60 * 1000).unref();

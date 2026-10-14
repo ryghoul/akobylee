@@ -2228,7 +2228,9 @@ async function initializeMenuPage() {
   renderMenuSaveStatus();
 }
 
-initializeMenuPage();
+initializeMenuPage()
+  .catch(error => console.error('[menu] page setup failed:', error))
+  .finally(() => document.getElementById('panel-current')?.classList.remove('menu-loading'));
 
 // Drinks without a photo (or with a missing file) show the plain backdrop, not a broken image.
 modalImg.addEventListener('error', () => { modalImg.style.visibility = 'hidden'; });
@@ -2239,6 +2241,13 @@ overlay.addEventListener('click', e => { if (e.target === overlay) closeModal();
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   closeModal();
+  // Escape cancels the editor dialog on screen (Edit Drink, Add Drink...)
+  // first; only with none open does it leave delete mode.
+  const openDialogs = document.querySelectorAll('.menu-editor-modal:not(.hidden), .drink-prompt-modal:not(.hidden)');
+  if (openDialogs.length) {
+    openDialogs.forEach(dialog => dialog.classList.add('hidden'));
+    return;
+  }
   if (document.body.classList.contains('menu-delete-mode')) toggleMenuDeleteMode();
 });
 

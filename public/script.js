@@ -324,7 +324,8 @@
   }
 
   function ensureStaffControls() {
-    if (!isDesktopViewport()) {
+    // While editing, keep the login modal: an expired session reopens it.
+    if (!isDesktopViewport() && !document.body.classList.contains('editor-enabled')) {
       const button = document.getElementById('staffLoginBtn');
       const modal = document.getElementById('staffLoginModal');
       if (button) button.remove();
@@ -560,18 +561,10 @@
 
   ensureStaffControls();
 
-  window.addEventListener('resize', () => {
-    if (!isDesktopViewport()) {
-      const button = document.getElementById('staffLoginBtn');
-      const modal = document.getElementById('staffLoginModal');
-      if (button) button.remove();
-      if (modal) modal.remove();
-      setEditorMode(false);
-      return;
-    }
-
-    ensureStaffControls();
-  });
+  // Narrow screens only lose the way in (the Staff Login button). An active
+  // editor session stays open: leaving it here closed open edit forms and lost
+  // typed changes whenever the window narrowed — browser zoom included.
+  window.addEventListener('resize', ensureStaffControls);
 
   (async () => {
     if (localStorage.getItem(STORAGE_KEY) !== '1') return;

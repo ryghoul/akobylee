@@ -19,6 +19,20 @@ html, body {
   overflow-x: hidden;
 }
 
+/* The built-in menu in menu.html is older than the saved one, so drinks stay
+   hidden (keeping their space) until menu.js has loaded the saved menu or
+   failed to. On a slow connection, or if the script never runs, the delayed
+   animation reveals the built-in menu; a late saved menu still replaces it. */
+.menu-panel.menu-loading .menu-section:not(#archiveSection),
+.menu-panel.menu-loading #archiveRows {
+  visibility: hidden;
+  animation: menu-reveal 0s linear 6s forwards;
+}
+
+@keyframes menu-reveal {
+  to { visibility: visible; }
+}
+
 
 /* ─────────────────────────────────────────────
    PAGE LAYOUT

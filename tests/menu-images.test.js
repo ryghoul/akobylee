@@ -119,6 +119,7 @@ function serverHarness() {
   const context = {
     fs, path, crypto, Buffer, console: { error() {} }, process,
     MENU_STATE_FILE: path.join(dataDir, 'menu-state.json'),
+    SVG_RESPONSE_POLICY: "default-src 'none'",
     exists: p => fs.existsSync(p),
     ensureDir: dir => fs.mkdirSync(dir, { recursive: true }),
     requireAdmin() {},
