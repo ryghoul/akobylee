@@ -371,6 +371,16 @@ function escapeMenuHtml(value) {
   }[char]));
 }
 
+// Next "#NN" after the highest number in use, so deleting a drink never makes
+// a new one repeat an existing number. Archive numbers (#A1, #C3...) are separate.
+function nextMenuDrinkNumber() {
+  const highest = Object.values(MENU_DATA).reduce((max, drink) => {
+    const match = /^#(\d+)$/.exec(String(drink?.num || ''));
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 0);
+  return `#${String(highest + 1).padStart(2, '0')}`;
+}
+
 function getCurrentDrinkIdSet() {
   return new Set([...document.querySelectorAll('#panel-current .mrow')]
     .filter(row => !row.closest('#archiveSection'))
@@ -674,6 +684,7 @@ function renderMenuSaveStatus() {
       ? 'This older backup has no save version. Restoring replaces the displayed menu. Review it before saving, or use the current menu.'
       : 'Unsaved changes found. Restore them or use the current menu before editing.',
     conflict: `Another editor saved a newer menu. ${menuSaveError} Use the latest menu to discard this draft and continue.`,
+    unloaded: `The shared menu could not be loaded, so editing is paused to avoid overwriting it. ${menuSaveError}`,
   };
   let message = messages[menuSavePhase] || '';
   if (menuSavePhase === 'recovery' && menuSaveError) message += ` ${menuSaveError}`;
@@ -686,7 +697,9 @@ function renderMenuSaveStatus() {
   document.getElementById('menuRetrySave').hidden = menuSavePhase !== 'failed';
   document.getElementById('menuRestoreChanges').hidden = menuSavePhase !== 'recovery';
   document.getElementById('menuDiscardRecovery').hidden = menuSavePhase !== 'recovery';
-  document.getElementById('menuLoadLatest').hidden = menuSavePhase !== 'conflict';
+  const loadLatest = document.getElementById('menuLoadLatest');
+  loadLatest.hidden = menuSavePhase !== 'conflict' && menuSavePhase !== 'unloaded';
+  loadLatest.textContent = menuSavePhase === 'unloaded' ? 'Reload menu' : 'Use latest menu';
 }
 
 function canEditMenu() {
@@ -695,10 +708,35 @@ function canEditMenu() {
     renderMenuSaveStatus();
     return false;
   }
-  if (!recoverableMenuSnapshot) return true;
-  menuSavePhase = 'recovery';
+  if (recoverableMenuSnapshot) {
+    menuSavePhase = 'recovery';
+    renderMenuSaveStatus();
+    return false;
+  }
+  // Without the server's version, a save could silently replace a menu this
+  // page never saw (it may be showing an old local copy or the built-in menu).
+  if (!menuServerRevision) {
+    menuSavePhase = 'unloaded';
+    renderMenuSaveStatus();
+    return false;
+  }
+  return true;
+}
+
+// Loading the shared menu replaces what is displayed; when the server has no
+// saved menu yet (false) there is nothing to overwrite, so the display stays.
+async function reloadSharedMenu() {
+  if (menuServerRevision || menuSavePhase !== 'unloaded' || !document.body.classList.contains('editor-enabled')) return;
+  const loaded = await loadMenuStateFromServer();
+  if (loaded === null) {
+    menuSaveError = 'It still could not be loaded. Check the connection and try again.';
+    renderMenuSaveStatus();
+    return;
+  }
+  initializeMenuHistory();
+  menuSavePhase = 'idle';
+  menuSaveError = '';
   renderMenuSaveStatus();
-  return false;
 }
 
 function discardUnsavedMenuChanges() {
@@ -1158,7 +1196,7 @@ function renderArchiveRows() {
 
     return `
       <details class="archive-group"${archiveGroupOpenState.get(category) ? ' open' : ''}>
-        <summary class="archive-group-toggle"><h3 class="archive-group-title">${categoryLabel}</h3></summary>
+        <summary class="archive-group-toggle"><h3 class="archive-group-title">${categoryLabel}</h3><button type="button" class="archive-group-delete">Delete section</button></summary>
         <div class="archive-group-rows">${rowsHtml}</div>
       </details>`;
   }).join('');
@@ -1414,6 +1452,9 @@ function bindMenuRowInteractions() {
     section.onclick = section.id === 'archiveSection' ? null : event => {
       if (!document.body.classList.contains('editor-enabled') || !document.body.classList.contains('menu-delete-mode')) return;
       if (event.target.closest('.mrow')) return;
+      // An archive header still opens and closes so its drinks can be reached;
+      // the section itself is deleted with its Delete section button.
+      if (event.target.closest('.archive-group-toggle') && !event.target.closest('.archive-group-delete')) return;
       event.preventDefault();
       event.stopPropagation();
       requestMenuDeletion(section);
@@ -1476,6 +1517,39 @@ function parsePromptText(input) {
   });
 
   return data;
+}
+
+function currentMenuSectionTitle(section) {
+  return section?.querySelector('.menu-section-title')?.textContent?.trim() || '';
+}
+
+// The Add Drink "Category:" line names the section (any letter case): a
+// current menu section first, then an archive section. A blank or unknown
+// category falls back to the last current section; matched says which.
+function resolveDrinkDestination(category) {
+  const wanted = String(category || '').trim().toLowerCase();
+  if (wanted) {
+    const section = [...document.querySelectorAll('#panel-current .menu-section')]
+      .filter(entry => entry.id !== 'archiveSection')
+      .find(entry => currentMenuSectionTitle(entry).toLowerCase() === wanted);
+    if (section) return { section, title: currentMenuSectionTitle(section), matched: true };
+    const archiveCategory = archiveSectionTitles.find(title => title.trim().toLowerCase() === wanted);
+    if (archiveCategory) return { archiveCategory, title: archiveCategory, matched: true };
+  }
+  const section = ensureCurrentMenuSection();
+  return { section, title: currentMenuSectionTitle(section) || 'Current Menu', matched: !wanted };
+}
+
+function drinkPromptExample() {
+  const sections = [...document.querySelectorAll('#panel-current .menu-section')].filter(entry => entry.id !== 'archiveSection');
+  const category = currentMenuSectionTitle(sections[sections.length - 1]) || 'Current Menu';
+  return `Name: Sunset Yuzu Tea
+Description: Bright citrus tea with floral finish and soft sweetness
+Image path:
+Category: ${category}
+Ingredients: Yuzu, black tea, honey, lemon peel
+Profile: Citrus 5, Sweet 3, Floral 4
+Note: Seasonal favorite with a soft, clean finish`;
 }
 
 function ensureMenuEditorModal() {
@@ -1611,14 +1685,14 @@ function ensureMenuEditorModal() {
 
     const base = MENU_DATA[id] || {};
     const record = {
-      num: base.num || `#${String(Object.keys(MENU_DATA).length + 1).padStart(2, '0')}`,
+      num: base.num || nextMenuDrinkNumber(),
       cat: base.cat || (source === 'archive' ? 'Archive' : 'Current Menu'),
       name: nameValue,
       ingredients: ingredientsValue.length ? ingredientsValue : (base.ingredients || ['House blend']),
       profile: Object.keys(parsedProfile).length ? parsedProfile : (base.profile || { Smooth: 3, Sweet: 3, Bright: 3 }),
       note: noteValue,
       desc: descriptionValue,
-      image: imageValue || (MENU_IMAGES[id] || 'Pictures/menu/current/custom.jpg'),
+      image: imageValue || MENU_IMAGES[id] || '',
       category: base.category || base.cat || 'Current Menu',
     };
 
@@ -1727,7 +1801,7 @@ function ensureDrinkPromptModal() {
     <div class="drink-prompt-panel" role="dialog" aria-modal="true" aria-labelledby="drinkPromptTitle">
       <button type="button" class="menu-editor-close" aria-label="Close prompt">×</button>
       <h3 id="drinkPromptTitle">Add Drink</h3>
-      <p>Use this format exactly. The text box can scroll if you need more space.</p>
+      <p>Use this format exactly. Category must match a section name. To add a photo, leave Image path blank, then use Edit Selected to upload one. The text box can scroll if you need more space.</p>
       <textarea id="drinkPromptTextarea" class="drink-prompt-textarea"></textarea>
       <div class="drink-prompt-actions">
         <button type="button" id="drinkPromptCancel" class="secondary-btn">Cancel</button>
@@ -1737,14 +1811,7 @@ function ensureDrinkPromptModal() {
   `;
 
   const textArea = modal.querySelector('#drinkPromptTextarea');
-  const example = `Name: Sunset Yuzu Tea
-Description: Bright citrus tea with floral finish and soft sweetness
-Image path: Pictures/menu/current/sunset-yuzu.jpg
-Category: Current Menu
-Ingredients: Yuzu, black tea, honey, lemon peel
-Profile: Citrus 5, Sweet 3, Floral 4
-Note: Seasonal favorite with a soft, clean finish`;
-  textArea.value = example;
+  textArea.value = drinkPromptExample();
 
   window.AKO.wireModalDismiss(modal, 'drinkPromptCancel');
 
@@ -1755,12 +1822,14 @@ Note: Seasonal favorite with a soft, clean finish`;
 
     const parsed = parsePromptText(response);
     const id = 'custom-' + Date.now();
+    const destination = resolveDrinkDestination(parsed.category);
     const item = {
       id,
+      num: nextMenuDrinkNumber(),
       name: parsed.name || 'Custom Drink',
       desc: parsed.description || 'Custom menu item',
-      image: parsed.image || 'Pictures/menu/current/custom.jpg',
-      category: parsed.category || 'Current Menu',
+      image: parsed.image || '',
+      category: destination.title,
       ingredients: parsed.ingredients && parsed.ingredients.length ? parsed.ingredients : ['House blend'],
       profile: parsed.profile || { Smooth: 3, Sweet: 3, Bright: 3 },
       note: parsed.note || 'Added in editor mode.',
@@ -1768,8 +1837,8 @@ Note: Seasonal favorite with a soft, clean finish`;
 
     MENU_IMAGES[id] = item.image;
     MENU_DATA[id] = {
-      num: `#${String(Object.keys(MENU_DATA).length + 1).padStart(2, '0')}`,
-      cat: 'Current Menu',
+      num: item.num,
+      cat: item.category,
       name: item.name,
       desc: item.desc,
       ingredients: item.ingredients,
@@ -1777,23 +1846,36 @@ Note: Seasonal favorite with a soft, clean finish`;
       note: item.note,
     };
 
-    const currentPanel = document.getElementById('panel-current');
-    const menuSection = ensureCurrentMenuSection();
-    const row = document.createElement('div');
-    row.className = 'mrow';
-    row.dataset.id = id;
-    row.innerHTML = `
+    if (destination.archiveCategory) {
+      ARCHIVE_MENU_ITEMS.push(item);
+      // Rendering re-reads each group's open state from the page, so open it there too.
+      archiveGroupOpenState.set(destination.archiveCategory, true);
+      [...(document.getElementById('archiveRows')?.querySelectorAll('details.archive-group') || [])]
+        .filter(group => group.querySelector('.archive-group-title')?.textContent === destination.archiveCategory)
+        .forEach(group => { group.open = true; });
+      renderArchiveRows();
+      document.getElementById('archiveSection')?.classList.add('open');
+      document.getElementById('archiveToggle')?.setAttribute('aria-expanded', 'true');
+    } else {
+      const currentPanel = document.getElementById('panel-current');
+      const row = document.createElement('div');
+      row.className = 'mrow';
+      row.dataset.id = id;
+      row.innerHTML = `
       <div class="mrow-left">
         <div class="mrow-name">${escapeMenuHtml(item.name)}</div>
         <div class="mrow-desc">${escapeMenuHtml(item.desc)}</div>
       </div>
       <span class="mrow-arrow">→</span>
     `;
-
-  if (menuSection) menuSection.appendChild(row); else if (currentPanel) currentPanel.appendChild(row);
+      if (destination.section) destination.section.appendChild(row); else if (currentPanel) currentPanel.appendChild(row);
+    }
     bindMenuRowInteractions();
     modal.classList.add('hidden');
     saveMenuState();
+    if (!destination.matched) {
+      alert(`No section is named "${parsed.category}", so "${item.name}" was added to "${destination.title}".`);
+    }
   });
 
   document.body.appendChild(modal);
@@ -1806,15 +1888,7 @@ function addDrinkFromPrompt() {
   const textArea = document.getElementById('drinkPromptTextarea');
   if (!modal || !textArea) return;
 
-  const example = `Name: Sunset Yuzu Tea
-Description: Bright citrus tea with floral finish and soft sweetness
-Image path: Pictures/menu/current/sunset-yuzu.jpg
-Category: Current Menu
-Ingredients: Yuzu, black tea, honey, lemon peel
-Profile: Citrus 5, Sweet 3, Floral 4
-Note: Seasonal favorite with a soft, clean finish`;
-
-  textArea.value = example;
+  textArea.value = drinkPromptExample();
   modal.classList.remove('hidden');
   setTimeout(() => textArea.focus(), 50);
 }
@@ -2087,7 +2161,8 @@ async function initializeMenuPage() {
   document.getElementById('menuRestoreChanges').addEventListener('click', restoreUnsavedMenuChanges);
   document.getElementById('menuDiscardRecovery').addEventListener('click', discardUnsavedMenuChanges);
   document.getElementById('menuLoadLatest').addEventListener('click', () => {
-    useLatestMenu().catch(error => {
+    const action = menuSavePhase === 'unloaded' ? reloadSharedMenu : useLatestMenu;
+    action().catch(error => {
       menuSaveError = error.message;
       renderMenuSaveStatus();
     });
@@ -2106,6 +2181,11 @@ async function initializeMenuPage() {
 
   initializeMenuHistory();
   bindMenuRowInteractions();
+  // An edit tried while the first load was still in flight paused editing.
+  if (menuServerRevision && menuSavePhase === 'unloaded') {
+    menuSavePhase = 'idle';
+    menuSaveError = '';
+  }
   renderMenuSaveStatus();
 }
 

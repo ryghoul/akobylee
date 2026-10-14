@@ -787,8 +787,32 @@ body.editor-enabled .menu-movement-retry {
   pointer-events: none;
 }
 
+.archive-group-delete {
+  display: none;
+  margin-left: auto;
+  margin-right: 14px;
+  padding: 4px 10px;
+  border: 1px solid var(--ako-bright-red);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--wine);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+body.editor-enabled.menu-delete-mode .archive-group-delete {
+  display: inline-block;
+}
+
+body.menu-delete-mode .archive-group-delete:hover,
+body.menu-delete-mode .archive-group-delete:focus-visible {
+  background: var(--ako-bright-red);
+  color: var(--ivory);
+}
+
 body.menu-delete-mode .mrow:hover,
-body.menu-delete-mode .archive-group:not(:has(.mrow:hover)):hover,
+body.menu-delete-mode .archive-group:not(:has(.mrow:hover)):not(:has(.archive-group-toggle:hover)):hover,
+body.menu-delete-mode .archive-group:has(.archive-group-delete:hover),
 body.menu-delete-mode .menu-section:not(#archiveSection):not(:has(.mrow:hover)):hover {
   outline: 2px dashed var(--ako-bright-red);
   outline-offset: 4px;

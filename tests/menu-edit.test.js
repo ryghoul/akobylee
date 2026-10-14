@@ -110,8 +110,9 @@ test('newly added drinks store their displayed description in menu data', () => 
     canEditMenu: () => true, MENU_DATA: {}, MENU_IMAGES: {},
     textArea: { value: 'Name: New <svg onload=alert(1)> Tea\nDescription: Citrus <img src=x onerror=alert(1)> & tea' },
     modal: { classList: { add() {} } },
-    document: { getElementById: () => null, createElement: () => ({ dataset: {} }) },
-    ensureCurrentMenuSection: () => ({ appendChild: row => rows.push(row) }),
+    document: { getElementById: () => null, createElement: () => ({ dataset: {} }), querySelectorAll: () => [] },
+    archiveSectionTitles: [],
+    ensureCurrentMenuSection: () => ({ appendChild: row => rows.push(row), querySelector: () => ({ textContent: 'Specials' }) }),
     bindMenuRowInteractions() {}, saveMenuState() {},
   };
   vm.createContext(context);

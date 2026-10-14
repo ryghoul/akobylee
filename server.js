@@ -1005,6 +1005,8 @@ const IMAGE_MIME_EXTENSIONS = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/
 const STAGED_IMAGE_DIR = path.resolve(path.dirname(MENU_STATE_FILE), 'staged-images');
 const STAGED_IMAGE_URL_PREFIX = '/api/staged-images/';
 const STAGED_IMAGE_NAME = /^[a-f0-9]{64}\.(png|jpg|webp|gif|svg)$/;
+// Copies of photos committed to GitHub, served until the next deploy ships them.
+const PUBLISHED_IMAGE_CACHE_DIR = path.resolve(path.dirname(MENU_STATE_FILE), 'published-images');
 
 function parseImageDataUrl(dataUrl) {
   const match = /^data:([^;]+);base64,(.+)$/.exec(String(dataUrl || ''));
@@ -1098,11 +1100,42 @@ app.post('/api/github/upload-image', requireAdmin, async (req, res) => {
       `Upload image ${uniqueName} (${new Date().toISOString()})`
     );
 
+    // The running site only gets the committed file on its next deploy, so
+    // keep a copy to serve until then. The commit already succeeded, so a
+    // failed copy is logged rather than reported as a failed upload.
+    try {
+      const copyPath = path.join(PUBLISHED_IMAGE_CACHE_DIR, folder, uniqueName);
+      ensureDir(path.dirname(copyPath));
+      const tempPath = `${copyPath}.${process.pid}.${Date.now()}.tmp`;
+      fs.writeFileSync(tempPath, Buffer.from(base64Data, 'base64'));
+      fs.renameSync(tempPath, copyPath);
+    } catch (copyError) {
+      console.error('[github] could not keep a local copy of the uploaded image:', copyError);
+    }
+
     res.json({ ok: true, path: `${folder}/${uniqueName}`, publishResult });
   } catch (e) {
     console.error('[github] image upload error:', e);
     res.status(500).json({ ok: false, error: e.message || 'Failed to upload image.' });
   }
+});
+
+// Reached only when express.static has no such file yet (it falls through),
+// i.e. a photo committed since the last deploy.
+const PUBLISHED_IMAGE_NAME = /^\d+-[A-Za-z0-9._-]+$/;
+app.get(['/Pictures/menu/:name', '/Pictures/merch/:name'], (req, res, next) => {
+  const name = String(req.params.name);
+  if (!PUBLISHED_IMAGE_NAME.test(name)) return next();
+  const folder = req.path.startsWith('/Pictures/menu/') ? 'Pictures/menu' : 'Pictures/merch';
+  const filePath = path.join(PUBLISHED_IMAGE_CACHE_DIR, folder, name);
+  if (!exists(filePath)) return next();
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'",
+  });
+  res.sendFile(filePath, error => {
+    if (error && !res.headersSent) next();
+  });
 });
 
 // ─────────────────────────────────────────────────────────────
