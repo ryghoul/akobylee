@@ -264,12 +264,28 @@ body.editor-enabled .bandana-card.is-selected {
   justify-content: center;
   gap: 10px;
   opacity: 0;
+  /* Hidden controls must not take taps: on phones they used to add items
+     without the customer ever seeing the button. */
+  pointer-events: none;
   transition: opacity 0.22s ease;
   padding: 24px;
   text-align: center;
 }
 
-.shirt-card:hover .shirt-overlay { opacity: 1; }
+/* Touch screens apply :hover during the very tap that should only reveal the
+   overlay, so there it opens via .overlay-open (set by shop.js) instead. */
+@media (hover: hover) {
+  .shirt-card:hover .shirt-overlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.shirt-card:focus-within .shirt-overlay,
+.shirt-card.overlay-open .shirt-overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
 
 .overlay-name {
   font-family: var(--headline-font);
@@ -325,6 +341,30 @@ body.editor-enabled .bandana-card.is-selected {
   background: none;
   color: var(--ivory);
   border-color: rgba(248, 248, 247, 0.4);
+}
+
+/* Size buttons on light cards (bags, bandanas, staff-created sections). */
+.size-row-light {
+  flex-wrap: wrap;
+  margin: 10px 0 8px;
+}
+
+.size-row-light .sz {
+  border-color: rgba(85, 11, 20, 0.35);
+  color: var(--wine);
+}
+
+.size-row-light .sz:hover,
+.size-row-light .sz.active {
+  background: var(--wine);
+  color: var(--ivory);
+  border-color: var(--wine);
+}
+
+.size-row-light .sz.out-of-stock:hover {
+  background: none;
+  color: var(--wine);
+  border-color: rgba(85, 11, 20, 0.35);
 }
 
 .overlay-btn {

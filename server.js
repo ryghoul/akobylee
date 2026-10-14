@@ -809,7 +809,7 @@ if (stripe) {
       for (const line of cart) {
         const product = skuToProduct[line.sku];
         if (!product) {
-          return res.status(400).json({ error: `"${line.sku}" is not an available item.` });
+          return res.status(400).json({ error: 'An item in your cart is no longer available. Please remove it and try again.' });
         }
         const label = itemLabel(product.name, line.sku);
         const available = Math.max(0, Number(stockBySku[line.sku]) || 0);

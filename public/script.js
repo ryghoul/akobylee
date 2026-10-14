@@ -120,13 +120,28 @@
     }[c]));
   }
 
+  // Messages about changes the customer didn't make themselves (a price
+  // update, a sold-out item removed...). Shown at the top of the cart until
+  // the cart is next changed.
+  let cartNotices = [];
+  const formatMoney = cents => '$' + (cents / 100).toFixed(2);
+  const itemTitle = item => item.name + (item.variant ? ` (${item.variant})` : '');
+
   /* ── Add item to cart ── */
-  function addToCart({ sku, name, variant, price, emoji = '🛍', image = '' }) {
+  // maxQty is the stock the shop page knew about when the item was added.
+  function addToCart({ sku, name, variant, price, emoji = '🛍', image = '', maxQty }) {
+    cartNotices = [];
     const existing = cart.find(i => i.sku === sku);
+    const limit = Number.isFinite(maxQty) ? maxQty : existing?.maxQty;
     if (existing) {
-      existing.qty += 1;
+      if (Number.isFinite(maxQty)) existing.maxQty = maxQty;
+      if (Number.isFinite(limit) && existing.qty >= limit) {
+        cartNotices = [`Only ${limit} of ${itemTitle(existing)} available.`];
+      } else {
+        existing.qty += 1;
+      }
     } else {
-      cart.push({ sku, name, variant, price, qty: 1, emoji, image });
+      cart.push({ sku, name, variant, price, qty: 1, emoji, image, ...(Number.isFinite(maxQty) ? { maxQty } : {}) });
     }
     render();
     if (window.AKO?.openCart) window.AKO.openCart();
@@ -134,12 +149,14 @@
 
   /* ── Remove item ── */
   function removeItem(sku) {
+    cartNotices = [];
     cart = cart.filter(i => i.sku !== sku);
     render();
   }
 
   /* ── Clear cart (called by success.js after a completed purchase) ── */
   function clearCart() {
+    cartNotices = [];
     cart = [];
     render();
   }
@@ -148,9 +165,62 @@
   function changeQty(sku, delta) {
     const item = cart.find(i => i.sku === sku);
     if (!item) return;
+    cartNotices = [];
+    if (delta > 0 && Number.isFinite(item.maxQty) && item.qty >= item.maxQty) {
+      cartNotices = [`Only ${item.maxQty} of ${itemTitle(item)} available.`];
+      render();
+      return;
+    }
     item.qty += delta;
     if (item.qty <= 0) removeItem(sku);
     else render();
+  }
+
+  /* ── Bring the cart up to date with the live catalog ── */
+  // Prices, names and stock in a saved cart can be days old. Removes items
+  // that are gone, hidden or sold out, lowers quantities to what's in stock,
+  // and refreshes prices. Returns true if anything changed (and says what).
+  function reconcileCart(products) {
+    const bySku = new Map();
+    (Array.isArray(products) ? products : []).forEach(product => {
+      (product.sizes || []).forEach(size => bySku.set(`${product.productKey}|${size}`, { product, size }));
+    });
+    const notices = [];
+    const next = [];
+    cart.forEach(item => {
+      const match = bySku.get(item.sku);
+      if (!match || match.product.active === false) {
+        notices.push(`${itemTitle(item)} is no longer available and was removed.`);
+        return;
+      }
+      const stock = Math.max(0, Number(match.product.stock?.[match.size]) || 0);
+      if (stock === 0) {
+        notices.push(`${itemTitle(item)} sold out and was removed.`);
+        return;
+      }
+      const price = Number(match.product.price) || 0;
+      if (price !== item.price) notices.push(`${itemTitle(item)} is now ${formatMoney(price)} each.`);
+      if (item.qty > stock) notices.push(`Only ${stock} of ${itemTitle(item)} left, so your quantity was lowered.`);
+      next.push({
+        ...item,
+        name: match.product.name || item.name,
+        image: match.product.image || item.image,
+        price,
+        qty: Math.min(item.qty, stock),
+        maxQty: stock,
+      });
+    });
+    cart = next;
+    if (notices.length) cartNotices = notices;
+    render();
+    return notices.length > 0;
+  }
+
+  async function refreshCartFromCatalog() {
+    const res = await fetch('/api/shop-catalog', { cache: 'no-store' });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok || !payload.ok) throw new Error(payload.error || 'Failed to load shop catalog');
+    return reconcileCart(payload.products);
   }
 
   /* ── Render cart drawer ── */
@@ -179,8 +249,12 @@
     // Items list
     if (!itemsEl) return;
 
+    const noticeHtml = cartNotices.length
+      ? `<div class="cart-notice" role="status">${cartNotices.map(text => `<p>${escapeHtml(text)}</p>`).join('')}</div>`
+      : '';
+
     if (cart.length === 0) {
-      itemsEl.innerHTML = `
+      itemsEl.innerHTML = noticeHtml + `
         <div class="cart-empty">
           <div class="cart-empty-icon">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#7e6961" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -194,8 +268,8 @@
       return;
     }
 
-    itemsEl.innerHTML = cart.map(item => `
-      <div class="cart-item" data-sku="${item.sku}">
+    itemsEl.innerHTML = noticeHtml + cart.map(item => `
+      <div class="cart-item" data-sku="${escapeHtml(item.sku)}">
         <div class="cart-item-thumb">${item.image
           ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><span class="cart-item-emoji">${escapeHtml(item.emoji)}</span>`
           : escapeHtml(item.emoji)}</div>
@@ -203,14 +277,14 @@
           <div class="cart-item-name">${escapeHtml(item.name)}</div>
           <div class="cart-item-variant">${escapeHtml(item.variant)}</div>
           <div class="cart-item-qty">
-            <button class="qty-btn" data-sku="${item.sku}" data-delta="-1">−</button>
+            <button class="qty-btn" data-sku="${escapeHtml(item.sku)}" data-delta="-1">−</button>
             <span class="qty-num">${item.qty}</span>
-            <button class="qty-btn" data-sku="${item.sku}" data-delta="1">+</button>
+            <button class="qty-btn" data-sku="${escapeHtml(item.sku)}" data-delta="1">+</button>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
           <div class="cart-item-price">$${(item.price * item.qty / 100).toFixed(2)}</div>
-          <button class="cart-item-remove" data-sku="${item.sku}" aria-label="Remove">×</button>
+          <button class="cart-item-remove" data-sku="${escapeHtml(item.sku)}" aria-label="Remove">×</button>
         </div>
       </div>`).join('');
 
@@ -226,11 +300,35 @@
   }
 
   /* ── Checkout ── */
+  function resetCheckoutButton() {
+    if (!checkoutEl) return;
+    checkoutEl.textContent = 'Checkout';
+    checkoutEl.disabled = cart.length === 0;
+  }
+
   if (checkoutEl) {
     checkoutEl.addEventListener('click', async () => {
       if (!cart.length) return;
       checkoutEl.disabled = true;
       checkoutEl.textContent = 'Loading…';
+
+      // Check the cart against the live catalog first; if anything changed,
+      // stop so the customer sees what changed before paying. If the check
+      // itself fails, carry on: the server checks prices and stock anyway.
+      try {
+        if (await refreshCartFromCatalog()) {
+          if (window.AKO?.openCart) window.AKO.openCart();
+          resetCheckoutButton();
+          return;
+        }
+      } catch (err) {
+        console.warn('[cart] could not refresh the cart before checkout:', err);
+      }
+      if (!cart.length) {
+        resetCheckoutButton();
+        return;
+      }
+      checkoutEl.disabled = true; // the refresh above re-rendered the cart
 
       try {
         const res = await fetch('/create-checkout-session', {
@@ -251,22 +349,32 @@
           window.location.href = data.url;
         } else {
           alert(data.error || 'Unable to start checkout.');
-          checkoutEl.disabled   = false;
-          checkoutEl.textContent = 'Checkout';
+          resetCheckoutButton();
         }
       } catch (err) {
         console.error('[cart] checkout error:', err);
         alert('Network error. Please try again.');
-        checkoutEl.disabled   = false;
-        checkoutEl.textContent = 'Checkout';
+        resetCheckoutButton();
       }
     });
   }
+
+  // Pressing Back from Stripe can restore this page exactly as it was left —
+  // with the button still on "Loading…" — and with a cart that another tab
+  // may have changed (or emptied after a purchase). Reset both.
+  window.addEventListener('pageshow', event => {
+    if (!event.persisted) return;
+    cart = loadCart();
+    cartNotices = [];
+    render();
+    resetCheckoutButton();
+  });
 
   /* ── Expose globally so shop.js can call addToCart ── */
   window.AKO = window.AKO || {};
   window.AKO.addToCart = addToCart;
   window.AKO.clearCart = clearCart;
+  window.AKO.reconcileCart = reconcileCart;
   window.AKO.escapeHtml = escapeHtml;
 
   render(); // initial render — reflects any cart restored from localStorage above

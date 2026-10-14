@@ -56,15 +56,26 @@
 
   /* ── Card templates (markup/classes match the site's existing CSS exactly) ── */
 
-  function renderShirtCard(p) {
-    const sizes = Array.isArray(p.sizes) && p.sizes.length ? p.sizes : ['NOSIZE'];
-    const firstAvailable = sizes.find(s => (p.stock?.[s] ?? 0) > 0) || sizes[0];
+  function productSizes(p) {
+    return Array.isArray(p.sizes) && p.sizes.length ? p.sizes : ['NOSIZE'];
+  }
 
-    const sizeButtons = sizes.map(size => {
+  function firstAvailableSize(p, sizes) {
+    return sizes.find(s => (p.stock?.[s] ?? 0) > 0) || sizes[0];
+  }
+
+  function sizeButtonsHtml(p, sizes, activeSize) {
+    return sizes.map(size => {
       const stock = p.stock?.[size] ?? 0;
-      const cls = ['sz', size === firstAvailable ? 'active' : '', stock === 0 ? 'out-of-stock' : ''].filter(Boolean).join(' ');
-      return `<button class="${cls}" data-size="${escapeHtml(size)}" data-sku="${escapeHtml(skuFor(p, size))}">${escapeHtml(size)}</button>`;
+      const cls = ['sz', size === activeSize ? 'active' : '', stock === 0 ? 'out-of-stock' : ''].filter(Boolean).join(' ');
+      return `<button type="button" class="${cls}" data-size="${escapeHtml(size)}" data-sku="${escapeHtml(skuFor(p, size))}">${escapeHtml(size)}</button>`;
     }).join('');
+  }
+
+  function renderShirtCard(p) {
+    const sizes = productSizes(p);
+    const firstAvailable = firstAvailableSize(p, sizes);
+    const sizeButtons = sizeButtonsHtml(p, sizes, firstAvailable);
 
     const initialStock = p.stock?.[firstAvailable] ?? 0;
     const { text: statusText, cls: statusCls } = stockLabel(initialStock);
@@ -93,8 +104,11 @@
       </div>`;
   }
 
+  // Bag and bandana cards show size buttons only for multi-size products
+  // (e.g. a hoodie in a staff-created section); single-size items need none.
   function renderBagCard(p) {
-    const size = (Array.isArray(p.sizes) && p.sizes[0]) || 'NOSIZE';
+    const sizes = productSizes(p);
+    const size = firstAvailableSize(p, sizes);
     const stock = p.stock?.[size] ?? 0;
     const { text: badgeText, cls: badgeCls } = stockLabel(stock);
     const bg = hexToRgba(p.colorHex, p.colorHex ? 0.12 : 0);
@@ -109,6 +123,7 @@
         <div class="bag-body">
           <div class="bag-name">${escapeHtml(p.name)}</div>
           <div class="bag-desc">${escapeHtml(p.description || '')}</div>
+          ${sizes.length > 1 ? `<div class="size-row size-row-light">${sizeButtonsHtml(p, sizes, size)}</div>` : ''}
           <div class="bag-stock-row">
             <span class="stock-badge${badgeCls ? ' ' + badgeCls : ''}">${badgeText}</span>
           </div>
@@ -121,7 +136,8 @@
   }
 
   function renderBandanaCard(p) {
-    const size = (Array.isArray(p.sizes) && p.sizes[0]) || 'NOSIZE';
+    const sizes = productSizes(p);
+    const size = firstAvailableSize(p, sizes);
     const stock = p.stock?.[size] ?? 0;
     const { text: badgeText, cls: badgeCls } = stockLabel(stock);
 
@@ -136,6 +152,7 @@
         <div class="bandana-body">
           <div class="bandana-name">${escapeHtml(p.name)}</div>
           <div class="bandana-desc">${escapeHtml(p.description || '')}</div>
+          ${sizes.length > 1 ? `<div class="size-row size-row-light">${sizeButtonsHtml(p, sizes, size)}</div>` : ''}
           <div class="bandana-footer">
             <div>
               <span class="bandana-price">$${formatPrice(p.price)}${p.presale ? ' <span class="presale-tag">presale</span>' : ''}</span>
@@ -148,8 +165,7 @@
   }
 
   // Generic fallback for staff-created sections beyond shirts/bags/bandanas.
-  // Reuses the bag-card layout; only the first size is orderable — multi-size
-  // custom-section products aren't fully supported by this fallback yet.
+  // Reuses the bag-card layout, including its size buttons.
   function renderGenericCard(p) {
     return renderBagCard(p);
   }
@@ -237,11 +253,12 @@
   }
 
   function bindCardInteractions() {
-    // Shirt-style size selection
-    document.querySelectorAll('.shirt-card').forEach(card => {
+    // Size selection, on any card that has size buttons
+    document.querySelectorAll('[data-productkey]').forEach(card => {
       const product = catalogByKey[card.dataset.productkey];
       if (!product) return;
-      const statusEl = card.querySelector('.stock-status');
+      const statusEl = card.querySelector('.stock-status, .stock-badge');
+      const statusBase = statusEl?.classList.contains('stock-badge') ? 'stock-badge' : 'stock-status';
       const addBtn = card.querySelector('.add-to-cart');
 
       card.querySelectorAll('.size-row .sz').forEach(btn => {
@@ -254,10 +271,22 @@
           const { text, cls } = stockLabel(stock);
           if (statusEl) {
             statusEl.textContent = text;
-            statusEl.className = 'stock-status' + (cls ? ' ' + cls : '');
+            statusEl.className = statusBase + (cls ? ' ' + cls : '');
           }
           if (addBtn) addBtn.disabled = (stock === 0);
         });
+      });
+    });
+
+    document.querySelectorAll('.shirt-card').forEach(card => {
+      // Touch screens have no hover, so the first tap opens the overlay (its
+      // buttons ignore taps until it is visible) and the next tap uses it.
+      card.addEventListener('click', () => {
+        if (!window.matchMedia('(hover: none)').matches) return;
+        document.querySelectorAll('.shirt-card.overlay-open').forEach(other => {
+          if (other !== card) other.classList.remove('overlay-open');
+        });
+        card.classList.add('overlay-open');
       });
 
       card.querySelectorAll('.size-guide-link').forEach(link => {
@@ -301,6 +330,7 @@
           price: product.price,
           emoji: SECTION_EMOJI[product.section] || '🛒',
           image: product.image || '',
+          maxQty: stock,
         });
       });
     });
@@ -361,6 +391,9 @@
       catalogByKey = Object.fromEntries(catalog.map(p => [p.productKey, p]));
 
       renderAll();
+      // A cart saved on an earlier visit may hold old prices or items that
+      // are gone or sold out; bring it up to date (it says what changed).
+      window.AKO?.reconcileCart?.(catalog);
     } catch (err) {
       console.error('[shop] catalog load failed:', err);
       document.querySelectorAll('.shop-loading').forEach(el => {
@@ -370,6 +403,12 @@
   }
 
   loadCatalog();
+
+  // On touch screens, tapping anywhere outside a shirt closes its overlay.
+  document.addEventListener('click', event => {
+    if (event.target.closest?.('.shirt-card')) return;
+    document.querySelectorAll('.shirt-card.overlay-open').forEach(card => card.classList.remove('overlay-open'));
+  });
 
   // Exposed for shop-editor.js: reload() re-fetches the catalog and re-renders;
   // getProduct() looks up a currently-loaded product's full data by productKey.

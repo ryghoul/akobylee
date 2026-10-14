@@ -596,6 +596,20 @@ body.editor-enabled .mrow.is-selected {
   padding: 16px var(--pad);
 }
 
+.cart-notice {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(85, 11, 20, 0.07);
+  color: var(--wine);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.cart-notice p + p {
+  margin-top: 4px;
+}
+
 .cart-empty {
   display: flex;
   flex-direction: column;
