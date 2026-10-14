@@ -40,7 +40,11 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok) throw new Error(data.error || 'Unable to confirm your order.');
 
-        showState('success', 'Thank you for your order!', 'Your order is confirmed. You can safely leave this page.');
+        // pending: the payment is confirmed and the server is still finishing
+        // the order (it retries on its own), so the customer has nothing to do.
+        showState('success', 'Thank you for your order!', data.pending
+          ? 'Your payment went through. We’re finishing your order now, and your confirmation email will follow. You can safely leave this page.'
+          : 'Your order is confirmed. You can safely leave this page.');
         window.AKO?.clearCart?.();
         return;
       } catch (err) {

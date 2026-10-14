@@ -114,6 +114,43 @@ app.use(cors({
     cb(null, ALLOWED_ORIGINS.includes(origin));
   }
 }));
+// Stripe webhook: records paid orders even when the customer never reaches
+// the success page. Stripe signs each event, and verifying that signature
+// needs the raw body, so this is registered before express.json() below.
+// Setup: in the Stripe dashboard, add an endpoint for <site>/stripe/webhook
+// sending checkout.session.completed and checkout.session.async_payment_succeeded,
+// then set its signing secret as STRIPE_WEBHOOK_SECRET.
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
+const ORDER_FULFILLMENT_EVENTS = new Set(['checkout.session.completed', 'checkout.session.async_payment_succeeded']);
+
+app.post('/stripe/webhook', express.raw({ type: 'application/json', limit: '1mb' }), async (req, res) => {
+  if (!stripe || !STRIPE_WEBHOOK_SECRET) {
+    console.error('[stripe-webhook] received an event, but STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET is not set.');
+    return res.status(503).json({ ok: false, error: 'Stripe webhook is not configured.' });
+  }
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, req.headers['stripe-signature'], STRIPE_WEBHOOK_SECRET);
+  } catch (error) {
+    console.error('[stripe-webhook] signature check failed:', error.message);
+    return res.status(400).json({ ok: false, error: 'Invalid signature.' });
+  }
+
+  if (!ORDER_FULFILLMENT_EVENTS.has(event.type)) return res.json({ received: true });
+
+  try {
+    // An unpaid session (a delayed payment method) is acknowledged; its
+    // async_payment_succeeded event arrives once the money does.
+    const result = await fulfillPaidCheckoutSession(event.data.object.id);
+    res.json({ received: true, status: result.status });
+  } catch (error) {
+    // A non-2xx reply makes Stripe retry the event (for up to three days).
+    console.error('[stripe-webhook] could not finish the order; Stripe will retry:', error);
+    res.status(500).json({ ok: false });
+  }
+});
+
 app.use(express.urlencoded({ extended: false }));
 // Default 100kb is too small for the shop/menu editors' staged image uploads —
 // a picked photo rides along as a base64 data URL in the regular Save/Edit
@@ -515,59 +552,239 @@ app.post('/contact', corsMW, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// Shared checkout stock decrement, used only by signed Stripe fulfillment.
+// Stripe checkout + order fulfillment
 // ─────────────────────────────────────────────────────────────
 
-// Guarded $inc per sku, run concurrently since each line targets a different
-// document (no Mongo transaction — no replica set configured, same
-// discipline as the rest of this file). If any line has insufficient stock,
-// every line that did succeed gets rolled back concurrently too, so this is
-// all-or-nothing for the cart regardless of line order.
-async function decrementInventoryForCart(cartLines) {
-  const lines = cartLines
-    .map(line => ({ sku: String(line?.sku || '').trim(), qty: Math.max(1, parseInt(line?.qty, 10) || 0) }))
-    .filter(line => line.sku && Number.isFinite(line.qty));
+const sizeFromSku = sku => sku.slice(sku.lastIndexOf('|') + 1);
+const shownSize = size => (size && size !== 'NOSIZE' ? size : '');
+const itemLabel = (name, sku) => {
+  const size = shownSize(sizeFromSku(sku));
+  return size ? `${name} — ${size}` : name;
+};
 
-  const results = await Promise.all(lines.map(async (line) => {
-    const result = await Inventory.updateOne(
-      { sku: line.sku, stock: { $gte: line.qty } },
-      { $inc: { stock: -line.qty } }
+// Merges repeated skus and validates the request: { cart: [{ sku, qty }] } or { error }.
+function normalizeCheckoutItems(items) {
+  if (!Array.isArray(items) || items.length === 0) return { error: 'No items in request.' };
+  const qtyBySku = new Map();
+  for (const item of items) {
+    const sku = String(item?.sku || '').trim();
+    const qty = parseInt(item?.quantity, 10);
+    if (!sku || !Number.isFinite(qty) || qty < 1) return { error: 'Each item needs a valid sku and quantity.' };
+    qtyBySku.set(sku, (qtyBySku.get(sku) || 0) + qty);
+  }
+  return { cart: [...qtyBySku].map(([sku, qty]) => ({ sku, qty })) };
+}
+
+// Reduces stock for a paid order, never below zero. A shortfall (the item sold
+// out between checkout and payment) is reported rather than thrown: the order
+// is paid either way, so it must still be recorded and announced to staff.
+// Each line is reported to markDone as it finishes, and lines in `done` are
+// skipped, so a retry after a crash never takes the same stock twice.
+async function decrementInventoryForCart(cartLines, { done = [], markDone = async () => {} } = {}) {
+  const finished = new Set(done);
+  for (const line of cartLines) {
+    const sku = String(line?.sku || '').trim();
+    const qty = parseInt(line?.qty, 10);
+    if (!sku || !Number.isFinite(qty) || qty < 1 || finished.has(sku)) continue;
+    const before = await Inventory.collection.findOneAndUpdate(
+      { sku },
+      [{ $set: { stock: { $max: [0, { $subtract: ['$stock', qty] }] } } }],
+      { returnDocument: 'before' }
     );
-    return { ...line, ok: result.modifiedCount === 1 };
-  }));
-
-  const failed = results.filter(r => !r.ok);
-  if (failed.length) {
-    const succeeded = results.filter(r => r.ok);
-    await Promise.all(succeeded.map(line =>
-      Inventory.updateOne({ sku: line.sku }, { $inc: { stock: line.qty } })
-    ));
-    throw new Error(`Insufficient stock for ${failed.map(f => f.sku).join(', ')}.`);
+    const available = Math.max(0, before?.stock ?? 0);
+    await markDone(sku, available < qty ? { sku, requested: qty, available } : null);
+    finished.add(sku);
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Stripe: Create Checkout Session  (only if Stripe is configured)
-// ─────────────────────────────────────────────────────────────
+function formatShippingAddress(session) {
+  const shipping = session.collected_information?.shipping_details || session.shipping_details || null;
+  const address = shipping?.address;
+  if (!address) return '';
+  const cityLine = [address.city, address.state, address.postal_code].filter(Boolean).join(', ');
+  return [shipping.name, address.line1, address.line2, cityLine, address.country].filter(Boolean).join('\n');
+}
+
+function describeOrderItems(session) {
+  return (session.line_items?.data || []).map(item => {
+    const unit = (item.price?.unit_amount || 0) / 100;
+    return `• ${item.description || 'Item'} — ${item.quantity} × $${unit.toFixed(2)}`;
+  }).join('\n');
+}
+
+function parseCartMetadata(session) {
+  try {
+    const lines = JSON.parse(session.metadata?.cart || '[]');
+    return Array.isArray(lines) ? lines : [];
+  } catch {
+    return [];
+  }
+}
+
+function tryGetMailer() { try { return getTransporter(); } catch { return null; } }
+
+async function ensureOrderEvent(sessionId) {
+  try {
+    return await OrderEvent.findOneAndUpdate(
+      { sessionId },
+      { $setOnInsert: { sessionId } },
+      { upsert: true, new: true }
+    );
+  } catch (err) {
+    if (err?.code === 11000) return OrderEvent.findOne({ sessionId });
+    throw err;
+  }
+}
+
+// A claim older than this belongs to an attempt that crashed, so it may be
+// taken over; otherwise one crash would block that order's task forever.
+const ORDER_TASK_CLAIM_TIMEOUT_MS = 10 * 60 * 1000;
+
+async function runClaimedOrderTask(sessionId, { claimField, completedField }, task) {
+  const staleBefore = new Date(Date.now() - ORDER_TASK_CLAIM_TIMEOUT_MS);
+  const claimed = await OrderEvent.findOneAndUpdate(
+    { sessionId, [completedField]: null, $or: [{ [claimField]: null }, { [claimField]: { $lt: staleBefore } }] },
+    { $set: { [claimField]: new Date() } },
+    { new: true }
+  );
+  if (!claimed) {
+    const existing = await OrderEvent.findOne({ sessionId }).select(completedField).lean();
+    if (existing?.[completedField]) return false;
+    throw new Error(`Order task ${completedField} is already in progress.`);
+  }
+
+  try {
+    await task();
+    await OrderEvent.updateOne(
+      { sessionId, [completedField]: null },
+      { $set: { [completedField]: new Date() }, $unset: { [claimField]: 1 } }
+    );
+    return true;
+  } catch (err) {
+    await OrderEvent.updateOne(
+      { sessionId, [completedField]: null },
+      { $unset: { [claimField]: 1 } }
+    );
+    throw err;
+  }
+}
+
+// Records a paid checkout: reduces stock, then emails the customer and staff.
+// Run by both the Stripe webhook (reliable, retried by Stripe) and the
+// success page (immediate). Each step is claimed and recorded once per order,
+// so running it twice — or at the same time — never repeats a step.
+// Returns { status: 'fulfilled' } or { status: 'unpaid', paymentStatus }.
+// Errors after payment is verified carry paymentVerified = true.
+async function fulfillPaidCheckoutSession(sessionId) {
+  const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    expand: ['line_items', 'customer_details'],
+  });
+  if (session.payment_status !== 'paid') return { status: 'unpaid', paymentStatus: session.payment_status };
+
+  try {
+    const orderEvent = await ensureOrderEvent(sessionId);
+    const cartLines = parseCartMetadata(session);
+
+    if (!orderEvent.decrementedAt) {
+      await runClaimedOrderTask(sessionId, {
+        claimField: 'decrementClaimedAt',
+        completedField: 'decrementedAt',
+      }, async () => {
+        const progress = await OrderEvent.findOne({ sessionId }).lean();
+        await decrementInventoryForCart(cartLines, {
+          done: progress?.decrementedSkus || [],
+          markDone: async (sku, shortage) => {
+            if (shortage) console.error('[order] paid order is short on stock:', sessionId, shortage);
+            await OrderEvent.updateOne({ sessionId }, {
+              $addToSet: { decrementedSkus: sku },
+              ...(shortage ? { $push: { stockShortages: shortage } } : {}),
+            });
+          },
+        });
+      });
+    }
+
+    const mailer = tryGetMailer();
+    // emailedAt covers legacy records; new records track each recipient
+    // independently through the claimed task fields below.
+    if (mailer && !orderEvent.emailedAt) {
+      const latest = await OrderEvent.findOne({ sessionId }).lean();
+      const shortages = latest?.stockShortages || [];
+      const customerEmail = session.customer_details?.email || session.customer_email;
+      const customerName = session.customer_details?.name || 'Customer';
+      const amountTotal = (session.amount_total || 0) / 100;
+      const currency = (session.currency || 'usd').toUpperCase();
+      const list = describeOrderItems(session) || '(no items?)';
+      const shipTo = formatShippingAddress(session);
+      const itemCodes = cartLines.map(line => `• ${line.sku} × ${line.qty}`).join('\n');
+      const shortageNote = shortages.length
+        ? `⚠ NOT ENOUGH STOCK — this order is paid, but these items ran out before payment finished:
+${shortages.map(s => `• ${s.sku}: ordered ${s.requested}, had ${s.available}`).join('\n')}
+Restock or contact the customer before shipping.
+
+`
+        : '';
+
+      const receiptText = `Thanks for your order, ${customerName}!
+
+Order Summary
+${list}
+
+Total: $${amountTotal.toFixed(2)} ${currency}
+${shipTo ? `\nShipping to:\n${shipTo}\n` : ''}
+— AKO by Lee`;
+
+      // Claim and record each delivery independently. If one send fails,
+      // retrying does not duplicate the other recipient's message.
+      await Promise.all([
+        customerEmail ? runClaimedOrderTask(sessionId, {
+          claimField: 'customerEmailClaimedAt',
+          completedField: 'customerEmailedAt',
+        }, () => mailer.sendMail({
+          from: EMAIL_USER,
+          to: customerEmail,
+          subject: 'AKO by Lee — Order Confirmation',
+          text: receiptText,
+        })) : null,
+        runClaimedOrderTask(sessionId, {
+          claimField: 'internalEmailClaimedAt',
+          completedField: 'internalEmailedAt',
+        }, () => mailer.sendMail({
+          from: EMAIL_USER,
+          to: TO_EMAIL || EMAIL_USER,
+          subject: `${shortages.length ? '⚠ Stock problem — ' : ''}New Order — ${customerEmail || customerName}`,
+          text: `${shortageNote}Session: ${session.id}
+Email: ${customerEmail || 'N/A'}
+Name: ${customerName}
+Total: $${amountTotal.toFixed(2)} ${currency}
+
+Items:
+${list}
+
+Item codes:
+${itemCodes || '(none recorded)'}
+
+Ship to:
+${shipTo || '(no shipping address collected)'}`,
+        })),
+      ]);
+    }
+
+    return { status: 'fulfilled' };
+  } catch (err) {
+    err.paymentVerified = true;
+    throw err;
+  }
+}
+
 if (stripe) {
   app.post('/create-checkout-session', async (req, res) => {
     try {
-      const { items = [], customer } = req.body || {};
-      if (!Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({ error: 'No items in request.' });
-      }
-
-      // Sanitize to {sku, qty} — sku is required now; name/price (if the
-      // client still sends them) are ignored, never trusted for pricing.
-      const cart = [];
-      for (const item of items) {
-        const sku = String(item?.sku || '').trim();
-        const qty = Math.max(1, parseInt(item?.quantity, 10) || 0);
-        if (!sku || !Number.isFinite(qty)) {
-          return res.status(400).json({ error: 'Each item needs a valid sku and quantity.' });
-        }
-        cart.push({ sku, qty });
-      }
+      // Only sku and quantity are used; any name/price the client sends is
+      // ignored, never trusted for pricing.
+      const { cart, error } = normalizeCheckoutItems(req.body?.items);
+      if (error) return res.status(400).json({ error });
+      const customer = req.body?.customer;
 
       // Resolve every sku to its live Product doc server-side. Only active
       // products are purchasable — this check is intentionally separate
@@ -583,24 +800,39 @@ if (stripe) {
         for (const size of p.sizes) skuToProduct[skuFor(p.productKey, size)] = p;
       }
 
+      // Refuse to take payment for stock that isn't there. (Two buyers can
+      // still race for the last item; fulfillment then flags the shortfall.)
+      const stockRows = await Inventory.find({ sku: { $in: cart.map(line => line.sku) } }, { _id: 0, sku: 1, stock: 1 }).lean();
+      const stockBySku = Object.fromEntries(stockRows.map(row => [row.sku, row.stock]));
+
       const line_items = [];
       for (const line of cart) {
         const product = skuToProduct[line.sku];
         if (!product) {
           return res.status(400).json({ error: `"${line.sku}" is not an available item.` });
         }
+        const label = itemLabel(product.name, line.sku);
+        const available = Math.max(0, Number(stockBySku[line.sku]) || 0);
+        if (available < line.qty) {
+          return res.status(409).json({
+            error: available === 0
+              ? `${label} is sold out. Please remove it from your cart.`
+              : `Only ${available} of ${label} left. Please lower the quantity in your cart.`,
+          });
+        }
         line_items.push({
           price_data: {
             currency: 'usd',
-            product_data: { name: product.name },
+            // The size is part of the name so it shows at checkout, on the
+            // receipt, and in both order emails.
+            product_data: { name: label, metadata: { sku: line.sku } },
             unit_amount: product.price, // cents, resolved server-side
           },
           quantity: line.qty,
           // Disabled deliberately: the site's own cart drawer already lets
           // customers adjust quantity before checkout. If Stripe's hosted
-          // UI could also adjust it, the cart snapshot we stash in session
-          // cart snapshot in session metadata could go stale relative to what
-          // was actually paid for.
+          // UI could also adjust it, the cart snapshot stashed in session
+          // metadata could go stale relative to what was actually paid for.
           adjustable_quantity: { enabled: false },
         });
       }
@@ -633,150 +865,23 @@ if (stripe) {
     }
   });
 
-  // Browser-triggered confirmation verifies payment with Stripe before any
-  // side effects. Each task is claimed independently for safe retries.
-  function tryGetMailer() { try { return getTransporter(); } catch { return null; } }
-
-  async function ensureOrderEvent(sessionId) {
-    try {
-      return await OrderEvent.findOneAndUpdate(
-        { sessionId },
-        { $setOnInsert: { sessionId } },
-        { upsert: true, new: true }
-      );
-    } catch (err) {
-      if (err?.code === 11000) return OrderEvent.findOne({ sessionId });
-      throw err;
-    }
-  }
-
-  async function runClaimedOrderTask(sessionId, { claimField, completedField }, task) {
-    const claimed = await OrderEvent.findOneAndUpdate(
-      { sessionId, [completedField]: null, [claimField]: null },
-      { $set: { [claimField]: new Date() } },
-      { new: true }
-    );
-    if (!claimed) {
-      const existing = await OrderEvent.findOne({ sessionId }).select(completedField).lean();
-      if (existing?.[completedField]) return false;
-      throw new Error(`Order task ${completedField} is already in progress.`);
-    }
-
-    try {
-      await task();
-      await OrderEvent.updateOne(
-        { sessionId, [completedField]: null },
-        { $set: { [completedField]: new Date() }, $unset: { [claimField]: 1 } }
-      );
-      return true;
-    } catch (err) {
-      await OrderEvent.updateOne(
-        { sessionId, [completedField]: null },
-        { $unset: { [claimField]: 1 } }
-      );
-      throw err;
-    }
-  }
-
+  // The success page's confirmation. Once Stripe says the order is paid, the
+  // customer is told so even if a follow-up step fails: the webhook retries
+  // those steps, and the customer's payment is not in question.
   app.get('/api/confirm-order', async (req, res) => {
+    const sessionId = String(req.query.session_id || req.query.sessionId || '').trim();
+    if (!sessionId) return res.status(400).json({ ok: false, error: 'Missing session_id' });
     try {
-      const sessionId = String(req.query.session_id || req.query.sessionId || '').trim();
-      if (!sessionId) return res.status(400).json({ ok: false, error: 'Missing session_id' });
-
-      const session = await stripe.checkout.sessions.retrieve(sessionId, {
-        expand: ['line_items', 'customer_details'],
-      });
-
-      if (session.payment_status !== 'paid') {
-        return res.status(400).json({ ok: false, error: 'Payment not completed', status: session.payment_status });
+      const result = await fulfillPaidCheckoutSession(sessionId);
+      if (result.status === 'unpaid') {
+        return res.status(400).json({ ok: false, error: 'Payment not completed', status: result.paymentStatus });
       }
-
-      const orderEvent = await ensureOrderEvent(sessionId);
-      const customerEmail = session.customer_details?.email || session.customer_email;
-      const customerName = session.customer_details?.name || 'Customer';
-
-      // Inventory and each email delivery are claimed independently, so
-      // concurrent confirmations cannot run the same side effect twice and a
-      // handled failure can be retried without repeating completed work.
-      if (!orderEvent.decrementedAt) {
-        try {
-          await runClaimedOrderTask(sessionId, {
-            claimField: 'decrementClaimedAt',
-            completedField: 'decrementedAt',
-          }, async () => {
-            let cartLines = [];
-            try { cartLines = JSON.parse(session.metadata?.cart || '[]'); } catch { cartLines = []; }
-            if (Array.isArray(cartLines) && cartLines.length) {
-              await decrementInventoryForCart(cartLines);
-            }
-          });
-        } catch (err) {
-          console.error('[confirm-order] decrement error:', err);
-          throw err;
-        }
-      }
-
-      const mailer = tryGetMailer();
-      // emailedAt covers legacy records; new records track each recipient
-      // independently through the claimed task fields below.
-      if (mailer && !orderEvent.emailedAt) {
-        try {
-          const items = session.line_items?.data || [];
-          const name = customerName;
-          const amountTotal = (session.amount_total || 0) / 100;
-          const currency = (session.currency || 'usd').toUpperCase();
-
-          const list = items.map(i => {
-            const unit = (i.price?.unit_amount || 0) / 100;
-            const desc = i.description || i.price?.product || 'Item';
-            return `• ${desc} — ${i.quantity} × $${unit.toFixed(2)}`;
-          }).join('\n');
-
-          const receiptText = `Thanks for your order, ${name}!
-
-Order Summary
-${list || '(no items?)'}
-
-Total: $${amountTotal.toFixed(2)} ${currency}
-
-— AKO by Lee`;
-
-          // Claim and record each delivery independently. If one send fails,
-          // retrying does not duplicate the other recipient's message.
-          await Promise.all([
-            customerEmail ? runClaimedOrderTask(sessionId, {
-              claimField: 'customerEmailClaimedAt',
-              completedField: 'customerEmailedAt',
-            }, () => mailer.sendMail({
-              from: EMAIL_USER,
-              to: customerEmail,
-              subject: 'AKO by Lee — Order Confirmation',
-              text: receiptText,
-            })) : null,
-            runClaimedOrderTask(sessionId, {
-              claimField: 'internalEmailClaimedAt',
-              completedField: 'internalEmailedAt',
-            }, () => mailer.sendMail({
-              from: EMAIL_USER,
-              to: TO_EMAIL || EMAIL_USER,
-              subject: `New Order — ${customerEmail || name}`,
-              text: `Session: ${session.id}
-Email: ${customerEmail || 'N/A'}
-Name: ${name}
-Total: $${amountTotal.toFixed(2)} ${currency}
-
-Items:
-${list || '(no items?)'}`,
-            })),
-          ]);
-        } catch (err) {
-          console.error('[confirm-order] email error:', err);
-          throw err;
-        }
-      }
-
       res.json({ ok: true });
     } catch (err) {
+      if (err.paymentVerified) {
+        console.error('[confirm-order] paid, but finishing the order failed (the webhook will retry):', err);
+        return res.json({ ok: true, pending: true });
+      }
       console.error('[confirm-order] error:', err);
       res.status(500).json({ ok: false, error: err.message || 'Unable to confirm order' });
     }

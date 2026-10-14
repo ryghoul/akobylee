@@ -44,6 +44,8 @@ services:
         value: akoshop_staging
       - key: STRIPE_SECRET_KEY
         sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false            # Signing secret of the Stripe webhook endpoint for /stripe/webhook
       - key: EMAIL_USER
         sync: false
       - key: EMAIL_APP_PASSWORD

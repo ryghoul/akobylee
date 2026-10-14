@@ -11,6 +11,13 @@ const OrderEventSchema = new mongoose.Schema(
     internalEmailClaimedAt: { type: Date, default: null },
     internalEmailedAt: { type: Date, default: null },
     emailedAt: { type: Date, default: null },
+    // Skus whose stock this order has already taken (so a retry skips them).
+    decrementedSkus: { type: [String], default: undefined },
+    // Items that ran out between checkout and payment (set by fulfillment).
+    stockShortages: {
+      type: [{ _id: false, sku: String, requested: Number, available: Number }],
+      default: undefined,
+    },
   },
   { collection: 'order_events', timestamps: true }
 );
