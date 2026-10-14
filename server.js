@@ -997,22 +997,85 @@ app.post('/api/shop-catalog/publish', requireAdmin, async (_req, res) => {
 // image as a base64 data URL locally and only call this at Publish time —
 // so routine edits never touch GitHub, only a deliberate Publish click does.
 const MAX_UPLOAD_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB — repo history keeps every version forever
-const ALLOWED_IMAGE_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml']);
+const IMAGE_MIME_EXTENSIONS = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg' };
+
+// Photos picked in the menu editor are staged on the same persistent disk as
+// the menu snapshot, so saves carry a short URL instead of the whole photo.
+// Names are content hashes, so re-picking the same photo reuses one file.
+const STAGED_IMAGE_DIR = path.resolve(path.dirname(MENU_STATE_FILE), 'staged-images');
+const STAGED_IMAGE_URL_PREFIX = '/api/staged-images/';
+const STAGED_IMAGE_NAME = /^[a-f0-9]{64}\.(png|jpg|webp|gif|svg)$/;
+
+function parseImageDataUrl(dataUrl) {
+  const match = /^data:([^;]+);base64,(.+)$/.exec(String(dataUrl || ''));
+  if (!match) return { error: 'dataUrl must be a base64 data: URL.' };
+  const [, mimeType, base64Data] = match;
+  if (!Object.hasOwn(IMAGE_MIME_EXTENSIONS, mimeType)) return { error: `Unsupported image type: ${mimeType}` };
+  if (Math.ceil(base64Data.length * 0.75) > MAX_UPLOAD_IMAGE_BYTES) {
+    return { error: `Image is too large (max ${MAX_UPLOAD_IMAGE_BYTES / (1024 * 1024)}MB).` };
+  }
+  return { mimeType, base64Data };
+}
+
+function stagedImageFile(imagePath) {
+  const value = String(imagePath || '');
+  if (!value.startsWith(STAGED_IMAGE_URL_PREFIX)) return null;
+  const name = value.slice(STAGED_IMAGE_URL_PREFIX.length);
+  return STAGED_IMAGE_NAME.test(name) ? path.join(STAGED_IMAGE_DIR, name) : null;
+}
+
+app.post('/api/staged-images', requireAdmin, (req, res) => {
+  try {
+    const image = parseImageDataUrl(req.body?.dataUrl);
+    if (image.error) return res.status(400).json({ ok: false, error: image.error });
+
+    const buffer = Buffer.from(image.base64Data, 'base64');
+    const name = `${crypto.createHash('sha256').update(buffer).digest('hex')}.${IMAGE_MIME_EXTENSIONS[image.mimeType]}`;
+    const filePath = path.join(STAGED_IMAGE_DIR, name);
+    if (!exists(filePath)) {
+      ensureDir(STAGED_IMAGE_DIR);
+      // Write then rename so a half-written photo is never served.
+      const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+      fs.writeFileSync(tempPath, buffer);
+      fs.renameSync(tempPath, filePath);
+    }
+    res.json({ ok: true, path: STAGED_IMAGE_URL_PREFIX + name });
+  } catch (e) {
+    console.error('[staged-images] save error:', e);
+    res.status(500).json({ ok: false, error: 'Failed to store the photo.' });
+  }
+});
+
+// Public, like GET /api/menu-state: a saved-but-unpublished menu shows these photos.
+app.get('/api/staged-images/:name', (req, res) => {
+  const filePath = stagedImageFile(STAGED_IMAGE_URL_PREFIX + req.params.name);
+  if (!filePath) return res.status(404).end();
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'",
+    'Cache-Control': 'public, max-age=31536000, immutable',
+  });
+  res.sendFile(filePath, error => {
+    if (error && !res.headersSent) res.status(404).end();
+  });
+});
 
 app.post('/api/github/upload-image', requireAdmin, async (req, res) => {
   try {
-    const { dataUrl, folder, filename } = req.body || {};
+    const { dataUrl, stagedImage, folder, filename } = req.body || {};
 
-    const match = /^data:([^;]+);base64,(.+)$/.exec(String(dataUrl || ''));
-    if (!match) return res.status(400).json({ ok: false, error: 'dataUrl must be a base64 data: URL.' });
-    const [, mimeType, base64Data] = match;
-    if (!ALLOWED_IMAGE_MIME.has(mimeType)) {
-      return res.status(400).json({ ok: false, error: `Unsupported image type: ${mimeType}` });
-    }
-
-    const approxBytes = Math.ceil(base64Data.length * 0.75);
-    if (approxBytes > MAX_UPLOAD_IMAGE_BYTES) {
-      return res.status(400).json({ ok: false, error: `Image is too large (max ${MAX_UPLOAD_IMAGE_BYTES / (1024 * 1024)}MB).` });
+    let base64Data;
+    if (stagedImage !== undefined) {
+      const filePath = stagedImageFile(stagedImage);
+      if (!filePath) return res.status(400).json({ ok: false, error: 'stagedImage must be a staged image path.' });
+      if (!exists(filePath)) {
+        return res.status(404).json({ ok: false, error: 'A staged photo is no longer on the server. Pick that photo again, then publish.' });
+      }
+      base64Data = fs.readFileSync(filePath).toString('base64');
+    } else {
+      const image = parseImageDataUrl(dataUrl);
+      if (image.error) return res.status(400).json({ ok: false, error: image.error });
+      base64Data = image.base64Data;
     }
 
     const allowedFolders = new Set(['Pictures/menu', 'Pictures/merch']);

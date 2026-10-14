@@ -13,18 +13,18 @@ const MENU_IMAGES = {
   'matcha-ade':       'Pictures/menu/current/aml.JPG',
   /*ARCHIVE*/
 // Archive — Main
-'lychee-black-tea':       'Pictures/menu/archive/lychee-black-tea.jpg',
-'hojicha-latte':          'Pictures/menu/archive/hojicha-latte.jpg',
-'rooibos-tea':            'Pictures/menu/archive/rooibos-tea.jpg',
-'bittersweet-kiss':       'Pictures/menu/archive/bittersweet-kiss.jpg',
-'sweet-dreams':           'Pictures/menu/archive/sweet-dreams.jpg',
-'campfires-marshmallows': 'Pictures/menu/archive/campfires-marshmallows.jpg',
-'coffee':                 'Pictures/menu/archive/coffee.jpg',
-'campfires-2':            'Pictures/menu/archive/campfires-2.jpg',
+'lychee-black-tea':       'Pictures/menu/not using/libt.JPG',
+'hojicha-latte':          'Pictures/menu/hojicha-latte.JPG',
+'rooibos-tea':            'Pictures/menu/rooibos-tea.JPG',
+'bittersweet-kiss':       'Pictures/menu/bittersweet-kiss.JPG',
+'sweet-dreams':           'Pictures/menu/archive/sweet-dreams.JPG',
+'campfires-marshmallows': 'Pictures/menu/fall.wint/cfmm.JPG',
+'coffee':                 '',
+'campfires-2':            'Pictures/menu/campfires-2.JPG',
 // Archive — Ikebana Alcohol Night
-'chuhai':                 'Pictures/menu/archive/ikebana/chuhai.jpg',
-'matcha-martini':         'Pictures/menu/archive/ikebana/matcha-martini.jpg',
-'jasmine-cocktail':       'Pictures/menu/archive/ikebana/jasmine-cocktail.jpg',
+'chuhai':                 'Pictures/menu/archive/ikebana/chuhai.JPG',
+'matcha-martini':         'Pictures/menu/archive/ikebana/matcha-martini.JPG',
+'jasmine-cocktail':       'Pictures/menu/archive/ikebana/jasmine-cocktail.JPG',
 // Archive — Miscellaneous
 'lychee-aloe-martini':    'Pictures/menu/archive/misc/lychee-aloe-martini.png',
 'na-margarita':           'Pictures/menu/archive/misc/na-margarita.png',
@@ -86,7 +86,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-lychee-infused-black-tea',
     name: 'Lychee Infused Black Tea',
     desc: 'Real lychee fruit smoked and infused into congou black tea with a fruity note.',
-    image: 'Pictures/menu/current/libt.JPG',
+    image: 'Pictures/menu/not using/libt.JPG',
     category: 'Current Menu (Legacy)',
     ingredients: ['Congou Black Tea', 'Smoked Lychee Fruit'],
     profile: { Fruity: 5, Sweet: 3, Bold: 3 },
@@ -96,7 +96,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-hojicha-latte-2025',
     name: "AKO's Hojicha Latte",
     desc: 'Roasted matcha from Shirakawa, Uji. Chocolatey, nutty, and woody.',
-    image: 'Pictures/menu/fall.wint/ahl.JPG',
+    image: 'Pictures/menu/hojicha-latte.JPG',
     category: 'Seasonal Fall/Winter Menu 2025',
     ingredients: ['Hojicha', 'Milk', 'Sweetener'],
     profile: { Nutty: 4, Roasty: 5, Smooth: 4 },
@@ -106,7 +106,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-chuhai',
     name: 'Chuhai',
     desc: 'An adaptation of an oolong hai with oolong-infused barley shochu and club soda.',
-    image: 'Pictures/menu/ikebana/CHUHAI.JPG',
+    image: 'Pictures/menu/archive/ikebana/chuhai.JPG',
     category: 'Ikebana Alc Night Menu 2025',
     ingredients: ['Oolong-Infused Barley Shochu', 'Club Soda'],
     profile: { Crisp: 4, Dry: 4, Herbal: 3 },
@@ -116,7 +116,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-matcha-cocktail',
     name: 'Matcha',
     desc: "AKO's matcha martini with chocolate notes.",
-    image: 'Pictures/menu/ikebana/MATCHA.JPG',
+    image: 'Pictures/menu/archive/ikebana/matcha-martini.JPG',
     category: 'Ikebana Alc Night Menu 2025',
     ingredients: ['Matcha', 'Licor 43', 'Haku Vodka', 'Cream', 'Egg Whites'],
     profile: { Rich: 5, Creamy: 4, Sweet: 3 },
@@ -126,7 +126,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-jasmine-cocktail',
     name: 'Jasmine',
     desc: 'Clarified jasmine milk tea cocktail with lychee, gin, and fresh lemon.',
-    image: 'Pictures/menu/ikebana/JASMINE.JPG',
+    image: 'Pictures/menu/archive/ikebana/jasmine-cocktail.JPG',
     category: 'Ikebana Alc Night Menu 2025',
     ingredients: ['Jasmine Milk Tea', 'Roku Gin', 'Lychee', 'Fresh Lemon Juice'],
     profile: { Floral: 5, Silky: 4, Bright: 4 },
@@ -136,7 +136,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-cream-2',
     name: 'Cream',
     desc: 'A 2.0 version with a more bubbly, creamy, and oolong-forward profile.',
-    image: 'Pictures/menu/ikebana/CREAM.JPG',
+    image: '',
     category: 'Ikebana Non Alc Night Menu 2025',
     ingredients: ['Oolong Base', 'Cream Top', 'Carbonation'],
     profile: { Creamy: 4, Bubbly: 4, Oolong: 4 },
@@ -146,7 +146,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-lychee-zero-martini',
     name: 'Lychee',
     desc: 'A zero lychee martini with botanical, floral, and sweet notes.',
-    image: 'Pictures/menu/ikebana/LYCHEE.jpg',
+    image: 'Pictures/menu/archive/ikebana/LYCHEE.jpg',
     category: 'Ikebana Non Alc Night Menu 2025',
     ingredients: ['Lychee', 'Botanical Blend'],
     profile: { Floral: 4, Sweet: 4, Light: 4 },
@@ -156,7 +156,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-yuzu-coffee',
     name: 'Yuzu',
     desc: 'Clarified coffee with peach and yuzu and an orange oil spray.',
-    image: 'Pictures/menu/ikebana/YUZU.JPG',
+    image: 'Pictures/menu/archive/ikebana/YUZU.JPG',
     category: 'Ikebana Non Alc Night Menu 2025',
     ingredients: ['Coffee', 'Peach', 'Yuzu', 'Orange Oil'],
     profile: { Juicy: 4, Bright: 4, Deep: 3 },
@@ -166,7 +166,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-lychee-aloe-na-martini',
     name: 'Lychee Aloe N/A Martini',
     desc: 'Experimental non-alcoholic martini style drink.',
-    image: 'Pictures/menu/elorea/lanam.png',
+    image: 'Pictures/menu/archive/misc/lychee-aloe-martini.png',
     category: 'Miscellaneous Menu 2025',
     ingredients: ['Lychee', 'Aloe'],
     profile: { Floral: 4, Sweet: 3, Light: 4 },
@@ -176,7 +176,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-na-margarita',
     name: 'N/A Margarita',
     desc: 'Experimental zero-proof margarita interpretation.',
-    image: 'Pictures/menu/elorea/nam.png',
+    image: 'Pictures/menu/archive/misc/na-margarita.png',
     category: 'Miscellaneous Menu 2025',
     ingredients: ['Citrus Blend', 'Zero-Proof Base'],
     profile: { Tangy: 4, Bright: 4, Crisp: 3 },
@@ -186,7 +186,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-coffee-bourbon-soy-foam',
     name: 'Coffee and N/A Bourbon with Soy Sauce Foam',
     desc: 'Coffee-based zero-proof concept topped with soy sauce foam.',
-    image: 'Pictures/menu/elorea/cnabwssf.png',
+    image: 'Pictures/menu/archive/misc/coffee-bourbon-soy.png',
     category: 'Miscellaneous Menu 2025',
     ingredients: ['Coffee', 'N/A Bourbon', 'Soy Sauce Foam'],
     profile: { Savory: 4, Deep: 4, Bold: 4 },
@@ -196,7 +196,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-grapefruit-blue-curacao-spritz',
     name: 'Grapefruit and Blue Curacao Spritz',
     desc: 'Citrus-forward sparkling spritz concept.',
-    image: 'Pictures/menu/elorea/gfbcs.png',
+    image: 'Pictures/menu/archive/misc/grapefruit-curacao.png',
     category: 'Miscellaneous Menu 2025',
     ingredients: ['Grapefruit', 'Blue Curacao Profile', 'Sparkling Base'],
     profile: { Citrus: 5, Sparkling: 4, Light: 4 },
@@ -206,7 +206,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-yuja-schisandra-tonic',
     name: 'Yuja and Schisandra Berry Tonic',
     desc: 'Yuja citrus and berry-tonic concept drink.',
-    image: 'Pictures/menu/elorea/ysbt.png',
+    image: 'Pictures/menu/archive/misc/yuja-schisandra.png',
     category: 'Miscellaneous Menu 2025',
     ingredients: ['Yuja', 'Schisandra Berry', 'Tonic'],
     profile: { Citrus: 4, Tart: 4, Bright: 4 },
@@ -216,7 +216,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-perilla-jeju-green-tea',
     name: 'Shaken Perilla Leaf Jeju Green Tea',
     desc: 'Shaken Jeju green tea infused with perilla leaf aromatics.',
-    image: 'Pictures/menu/elorea/spljgt.png',
+    image: 'Pictures/menu/archive/misc/perilla-jeju.png',
     category: 'Miscellaneous Menu 2025',
     ingredients: ['Jeju Green Tea', 'Perilla Leaf'],
     profile: { Herbal: 5, Fresh: 4, Light: 4 },
@@ -226,7 +226,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-clarified-coffee-rose-nutmeg',
     name: 'Clarified Coffee with Rose and Nutmeg Cream',
     desc: 'Clarified coffee with floral rose and warm nutmeg cream.',
-    image: 'Pictures/menu/elorea/ccwrnc.png',
+    image: 'Pictures/menu/archive/misc/clarified-coffee.png',
     category: 'Miscellaneous Menu 2025',
     ingredients: ['Clarified Coffee', 'Rose', 'Nutmeg Cream'],
     profile: { Floral: 3, Spiced: 4, Deep: 4 },
@@ -236,7 +236,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-matcha-jasmine-cream-top',
     name: 'Matcha and Jasmine Infused Cream Top',
     desc: 'Tea-forward drink with matcha and jasmine infused cream top.',
-    image: 'Pictures/menu/elorea/mjict.png',
+    image: 'Pictures/menu/archive/misc/matcha-jasmine-cream.png',
     category: 'Miscellaneous Menu 2025',
     ingredients: ['Matcha', 'Jasmine', 'Cream Top'],
     profile: { Floral: 4, Creamy: 4, Green: 4 },
@@ -246,7 +246,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-brown-sugar-orange-spiced-chai',
     name: 'Brown Sugar and Orange Spiced Chai',
     desc: 'Warm chai expression with brown sugar and orange spice notes.',
-    image: 'Pictures/menu/elorea/bsosc.png',
+    image: 'Pictures/menu/archive/misc/orange-chai.png',
     category: 'Miscellaneous Menu 2025',
     ingredients: ['Chai', 'Brown Sugar', 'Orange Spice'],
     profile: { Spiced: 5, Sweet: 4, Warm: 4 },
@@ -256,7 +256,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-shaken-jasmine-jeju-green-tea',
     name: 'Shaken Jasmine Jeju Green Tea',
     desc: 'Shaken jasmine and Jeju green tea blend.',
-    image: 'Pictures/menu/elorea/sjjgt.png',
+    image: 'Pictures/menu/archive/misc/shaken-jasmine-jeju.png',
     category: 'Miscellaneous Menu 2025',
     ingredients: ['Jasmine', 'Jeju Green Tea'],
     profile: { Floral: 4, Fresh: 4, Light: 4 },
@@ -266,7 +266,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-smoked-misugaru-mocha',
     name: 'Smoked Misugaru Mocha',
     desc: 'Smoky grain-forward mocha concept.',
-    image: 'Pictures/menu/elorea/smm.png',
+    image: 'Pictures/menu/archive/misc/misugaru-mocha.png',
     category: 'Miscellaneous Menu 2025',
     ingredients: ['Misugaru', 'Coffee', 'Cocoa'],
     profile: { Roasty: 4, Smoky: 4, Sweet: 3 },
@@ -276,7 +276,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-rooibos-tea',
     name: 'Rooibos Tea',
     desc: 'Non-caffeinated African tea with citrus, sage, and honey notes.',
-    image: 'Pictures/menu/elorea/r.JPG',
+    image: 'Pictures/menu/rooibos-tea.JPG',
     category: 'Miscellaneous Menu 2025',
     ingredients: ['Rooibos Tea'],
     profile: { Nutty: 3, Earthy: 4, Light: 4 },
@@ -286,7 +286,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-bittersweet-kiss',
     name: 'Bittersweet Kiss',
     desc: "AKO's first non-alcoholic mocktail built on rooibos concentrate.",
-    image: 'Pictures/menu/gnw/bsk.JPG',
+    image: 'Pictures/menu/bittersweet-kiss.JPG',
     category: 'Going Nowhere Menu 2025',
     ingredients: ['Rooibos Concentrate', 'Orange Oil', 'Lemon', 'Aperitif', 'Zero-Proof Gin'],
     profile: { Bitter: 3, Citrus: 4, Complex: 4 },
@@ -296,7 +296,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-sweet-dreams',
     name: 'Sweet Dreams',
     desc: 'An oolong cream soda highball with roasted and nutty notes.',
-    image: 'Pictures/menu/gnw/sd.JPG',
+    image: 'Pictures/menu/sweet-dreams.JPG',
     category: 'Going Nowhere Menu 2025',
     ingredients: ['Roasted Tie Guan Yin Concentrate', 'Brown Sugar', 'Vanilla', 'Carbonation'],
     profile: { Nutty: 4, Roasty: 4, Sweet: 3 },
@@ -306,7 +306,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-campfires-2',
     name: 'Campfires 2.0',
     desc: 'Lapsang souchong base with oolong foam and toffee crumble garnish.',
-    image: 'Pictures/menu/gnw/c2.JPG',
+    image: 'Pictures/menu/campfires-2.JPG',
     category: 'Going Nowhere Menu 2025',
     ingredients: ['Lapsang Souchong', 'Oolong Foam', 'Toffee Crumble'],
     profile: { Smoky: 5, Sweet: 3, Calm: 4 },
@@ -336,7 +336,7 @@ const ARCHIVE_MENU_ITEMS = [
     id: 'archive-coffee-no-caffeine',
     name: 'Coffee',
     desc: 'Bori-cha and hyeonmi-cha prepared like pour over coffee with no caffeine.',
-    image: 'Pictures/menu/fall.wint/ahl.JPG',
+    image: '',
     category: 'Seasonal Fall/Winter Menu 2024',
     ingredients: ['Bori-cha', 'Hyeonmi-cha'],
     profile: { Roasty: 4, Toasty: 4, Smooth: 3 },
@@ -564,6 +564,56 @@ function renderCurrentSections(currentSections) {
   if (archiveEl) currentPanel.appendChild(archiveEl);
 }
 
+// Older saved menus point at photos that were never committed, or differ only
+// in letter case (which matters on the Linux host). '' means no photo exists.
+const MENU_IMAGE_PATH_FIXES = {
+  'Pictures/menu/archive/lychee-black-tea.jpg': 'Pictures/menu/not using/libt.JPG',
+  'Pictures/menu/archive/hojicha-latte.jpg': 'Pictures/menu/hojicha-latte.JPG',
+  'Pictures/menu/archive/rooibos-tea.jpg': 'Pictures/menu/rooibos-tea.JPG',
+  'Pictures/menu/archive/bittersweet-kiss.jpg': 'Pictures/menu/bittersweet-kiss.JPG',
+  'Pictures/menu/archive/sweet-dreams.jpg': 'Pictures/menu/archive/sweet-dreams.JPG',
+  'Pictures/menu/archive/campfires-marshmallows.jpg': 'Pictures/menu/fall.wint/cfmm.JPG',
+  'Pictures/menu/archive/coffee.jpg': '',
+  'Pictures/menu/archive/campfires-2.jpg': 'Pictures/menu/campfires-2.JPG',
+  'Pictures/menu/archive/ikebana/chuhai.jpg': 'Pictures/menu/archive/ikebana/chuhai.JPG',
+  'Pictures/menu/archive/ikebana/matcha-martini.jpg': 'Pictures/menu/archive/ikebana/matcha-martini.JPG',
+  'Pictures/menu/archive/ikebana/jasmine-cocktail.jpg': 'Pictures/menu/archive/ikebana/jasmine-cocktail.JPG',
+  'Pictures/menu/current/libt.JPG': 'Pictures/menu/not using/libt.JPG',
+  'Pictures/menu/ikebana/CHUHAI.JPG': 'Pictures/menu/archive/ikebana/chuhai.JPG',
+  'Pictures/menu/ikebana/MATCHA.JPG': 'Pictures/menu/archive/ikebana/matcha-martini.JPG',
+  'Pictures/menu/ikebana/JASMINE.JPG': 'Pictures/menu/archive/ikebana/jasmine-cocktail.JPG',
+  'Pictures/menu/ikebana/CREAM.JPG': '',
+  'Pictures/menu/ikebana/LYCHEE.jpg': 'Pictures/menu/archive/ikebana/LYCHEE.jpg',
+  'Pictures/menu/ikebana/YUZU.JPG': 'Pictures/menu/archive/ikebana/YUZU.JPG',
+  'Pictures/menu/elorea/lanam.png': 'Pictures/menu/archive/misc/lychee-aloe-martini.png',
+  'Pictures/menu/elorea/nam.png': 'Pictures/menu/archive/misc/na-margarita.png',
+  'Pictures/menu/elorea/cnabwssf.png': 'Pictures/menu/archive/misc/coffee-bourbon-soy.png',
+  'Pictures/menu/elorea/gfbcs.png': 'Pictures/menu/archive/misc/grapefruit-curacao.png',
+  'Pictures/menu/elorea/ysbt.png': 'Pictures/menu/archive/misc/yuja-schisandra.png',
+  'Pictures/menu/elorea/spljgt.png': 'Pictures/menu/archive/misc/perilla-jeju.png',
+  'Pictures/menu/elorea/ccwrnc.png': 'Pictures/menu/archive/misc/clarified-coffee.png',
+  'Pictures/menu/elorea/mjict.png': 'Pictures/menu/archive/misc/matcha-jasmine-cream.png',
+  'Pictures/menu/elorea/bsosc.png': 'Pictures/menu/archive/misc/orange-chai.png',
+  'Pictures/menu/elorea/sjjgt.png': 'Pictures/menu/archive/misc/shaken-jasmine-jeju.png',
+  'Pictures/menu/elorea/smm.png': 'Pictures/menu/archive/misc/misugaru-mocha.png',
+  'Pictures/menu/elorea/r.JPG': 'Pictures/menu/rooibos-tea.JPG',
+  'Pictures/menu/gnw/bsk.JPG': 'Pictures/menu/bittersweet-kiss.JPG',
+  'Pictures/menu/gnw/sd.JPG': 'Pictures/menu/sweet-dreams.JPG',
+  'Pictures/menu/gnw/c2.JPG': 'Pictures/menu/campfires-2.JPG',
+  'Pictures/menu/fall.wint/ahl.JPG': '',
+};
+// ahl.JPG was shared by two drinks; only the hojicha latte has a real photo.
+const MENU_IMAGE_ID_PATH_FIXES = {
+  'archive-hojicha-latte-2025': { 'Pictures/menu/fall.wint/ahl.JPG': 'Pictures/menu/hojicha-latte.JPG' },
+};
+
+function repairMenuImagePath(id, imagePath) {
+  const idFixes = Object.hasOwn(MENU_IMAGE_ID_PATH_FIXES, id) ? MENU_IMAGE_ID_PATH_FIXES[id] : {};
+  if (Object.hasOwn(idFixes, imagePath)) return idFixes[imagePath];
+  if (Object.hasOwn(MENU_IMAGE_PATH_FIXES, imagePath)) return MENU_IMAGE_PATH_FIXES[imagePath];
+  return imagePath;
+}
+
 function applyMenuSnapshot(snapshot, options = {}) {
   if (!snapshot) return;
 
@@ -572,9 +622,13 @@ function applyMenuSnapshot(snapshot, options = {}) {
 
   Object.keys(MENU_IMAGES).forEach(key => delete MENU_IMAGES[key]);
   Object.assign(MENU_IMAGES, cloneSnapshot(snapshot.menuImages || {}));
+  Object.keys(MENU_IMAGES).forEach(id => { MENU_IMAGES[id] = repairMenuImagePath(id, MENU_IMAGES[id]); });
 
   ARCHIVE_MENU_ITEMS.length = 0;
-  (snapshot.archiveItems || []).forEach(item => ARCHIVE_MENU_ITEMS.push(item));
+  (snapshot.archiveItems || []).forEach(item => {
+    if (item && typeof item.image === 'string') item.image = repairMenuImagePath(item.id, item.image);
+    ARCHIVE_MENU_ITEMS.push(item);
+  });
 
   archiveSectionTitles = [...new Set(snapshot.archiveSections || ARCHIVE_MENU_ITEMS.map(item => item.category || 'Archive'))];
 
@@ -906,34 +960,96 @@ const IMAGE_MIME_EXTENSIONS = {
   'image/svg+xml': 'svg',
 };
 
-// Any image picked via the file input is staged locally as a base64 data URL
-// (see the file-input handler in ensureMenuEditorModal) so routine edits
-// never touch GitHub. Only at Publish time do staged images become real
-// committed files — this runs first so the JSON snapshot published right
-// after references real paths, not multi-megabyte base64 blobs.
-async function resolveStagedImagesToGitHub() {
-  for (const [id, value] of Object.entries(MENU_IMAGES)) {
-    const match = /^data:([^;]+);base64,/.exec(value || '');
-    if (!match) continue;
+const MAX_MENU_IMAGE_BYTES = 5 * 1024 * 1024;
+const STAGED_MENU_IMAGE_PREFIX = '/api/staged-images/';
 
-    const ext = IMAGE_MIME_EXTENSIONS[match[1]] || 'png';
-    const response = await fetch('/api/github/upload-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ dataUrl: value, folder: 'Pictures/menu', filename: `${id}.${ext}` }),
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok || !payload.ok) {
-      throw new Error(payload.error || `Failed to upload image for "${id}".`);
-    }
-    MENU_IMAGES[id] = payload.path;
+// A photo picked in the editor is stored on the server right away (see the
+// file-input handler in ensureMenuEditorModal), so saves carry a short
+// /api/staged-images/ URL and routine edits never touch GitHub. Older menus
+// may still hold base64 data: URLs. Both become committed files at Publish.
+function isStagedMenuImage(value) {
+  return typeof value === 'string'
+    && (value.startsWith(STAGED_MENU_IMAGE_PREFIX) || /^data:[^;]+;base64,/.test(value));
+}
+
+async function stageMenuImage(dataUrl) {
+  const response = await fetch('/api/staged-images', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ dataUrl }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (response.status === 401) handleAdminSessionExpired();
+  if (!response.ok || !payload.ok || typeof payload.path !== 'string') {
+    throw new Error(payload.error || (response.status === 413 ? 'That photo is too large.' : 'The photo could not be uploaded.'));
   }
+  return payload.path;
+}
+
+async function commitStagedMenuImage(id, value) {
+  const dataMatch = /^data:([^;]+);base64,/.exec(value);
+  const ext = dataMatch ? (IMAGE_MIME_EXTENSIONS[dataMatch[1]] || 'png') : value.split('.').pop();
+  const source = dataMatch ? { dataUrl: value } : { stagedImage: value };
+  const response = await fetch('/api/github/upload-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ ...source, folder: 'Pictures/menu', filename: `${id}.${ext}` }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (response.status === 401) handleAdminSessionExpired();
+  if (!response.ok || !payload.ok) {
+    throw new Error(payload.error || `Failed to upload the photo for "${MENU_DATA[id]?.name || id}".`);
+  }
+  return payload.path;
+}
+
+// Swaps staged photos for committed paths everywhere they live — including
+// archive items (which re-seed MENU_IMAGES on every archive render) and the
+// undo history — so none of them is ever uploaded a second time.
+function replaceStagedMenuImages(committed) {
+  const swap = value => (committed.has(value) ? committed.get(value) : value);
+  const swapIn = (images, items) => {
+    Object.keys(images || {}).forEach(id => { images[id] = swap(images[id]); });
+    (items || []).forEach(item => { if (item && item.image) item.image = swap(item.image); });
+  };
+  swapIn(MENU_IMAGES, ARCHIVE_MENU_ITEMS);
+  [...menuHistory.undo, ...menuHistory.redo].forEach(snapshot => swapIn(snapshot.menuImages, snapshot.archiveItems));
+  persistMenuHistory();
+  persistMenuSnapshot(buildMenuSnapshot());
+}
+
+// Returns how many photos were committed, plus the error that stopped it (if
+// any). Photos committed before a failure are still swapped in.
+async function resolveStagedImagesToGitHub() {
+  const committed = new Map();
+  const references = [
+    ...Object.entries(MENU_IMAGES),
+    ...ARCHIVE_MENU_ITEMS.filter(Boolean).map(item => [item.id, item.image]),
+  ];
+  let error = null;
+  for (const [id, value] of references) {
+    if (!isStagedMenuImage(value) || committed.has(value)) continue;
+    try {
+      committed.set(value, await commitStagedMenuImage(id, value));
+    } catch (uploadError) {
+      error = uploadError;
+      break;
+    }
+  }
+  if (committed.size) replaceStagedMenuImages(committed);
+  return { committed: committed.size, error };
 }
 
 async function publishMenuStateToGitHub() {
   if (!canEditMenu()) return;
-  await resolveStagedImagesToGitHub();
+  const staged = await resolveStagedImagesToGitHub();
+  if (staged.error) {
+    // Save the photos that did upload so a retry doesn't commit them again.
+    if (staged.committed) syncMenuStateToServer(cloneSnapshot(buildMenuSnapshot())).catch(() => undefined);
+    throw staged.error;
+  }
   await syncMenuStateToServer(cloneSnapshot(buildMenuSnapshot()));
 
   const response = await fetch(MENU_PUBLISH_URL, {
@@ -1414,14 +1530,58 @@ function ensureMenuEditorModal() {
   const preview = modal.querySelector('#menuEditorPreview');
   const imageUrlInput = modal.querySelector('#menuEditorImageUrl');
 
+  const showPreview = src => {
+    if (src) {
+      preview.src = src;
+      preview.classList.add('visible');
+    } else {
+      preview.removeAttribute('src');
+      preview.classList.remove('visible');
+    }
+  };
+
   fileInput.addEventListener('change', (event) => {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
+    const form = modal.querySelector('#menuEditorForm');
+    const previousImage = imageUrlInput.value.trim();
+    const reject = message => {
+      fileInput.value = '';
+      alert(message);
+    };
+    if (!IMAGE_MIME_EXTENSIONS[file.type]) {
+      reject('Choose a PNG, JPEG, WebP, GIF, or SVG photo.');
+      return;
+    }
+    if (file.size > MAX_MENU_IMAGE_BYTES) {
+      reject(`That photo is larger than ${MAX_MENU_IMAGE_BYTES / (1024 * 1024)}MB. Choose a smaller photo.`);
+      return;
+    }
+
+    const token = `${Date.now()}-${Math.random()}`;
+    setMenuEditorPhotoUpload(form, token);
+    const finish = errorMessage => {
+      // The editor was reopened or another photo was picked meanwhile.
+      if (form.dataset.uploadToken !== token) return;
+      setMenuEditorPhotoUpload(form, null);
+      if (errorMessage) {
+        showPreview(previousImage);
+        reject(`${errorMessage} The previous photo was kept.`);
+      }
+    };
+
     const reader = new FileReader();
-    reader.onload = () => {
-      preview.src = reader.result;
-      preview.classList.add('visible');
-      imageUrlInput.value = reader.result;
+    reader.onerror = () => finish('The photo could not be read.');
+    reader.onload = async () => {
+      if (form.dataset.uploadToken !== token) return;
+      showPreview(reader.result);
+      try {
+        const stagedPath = await stageMenuImage(reader.result);
+        if (form.dataset.uploadToken === token) imageUrlInput.value = stagedPath;
+        finish('');
+      } catch (error) {
+        finish(error.message || 'The photo could not be uploaded.');
+      }
     };
     reader.readAsDataURL(file);
   });
@@ -1434,7 +1594,7 @@ function ensureMenuEditorModal() {
     const form = event.currentTarget;
     const id = form.dataset.editId;
     const source = form.dataset.source || 'current';
-    if (!id) return;
+    if (!id || form.dataset.uploadToken) return;
 
     const nameValue = document.getElementById('menuEditorName').value.trim() || 'Untitled Drink';
     const descriptionValue = document.getElementById('menuEditorDescription').value.trim();
@@ -1524,6 +1684,8 @@ function openMenuEditorForRow(id, source = 'current') {
   const row = [...document.querySelectorAll('.mrow')].find(entry => entry.dataset.id === id);
   const imageValue = MENU_IMAGES[id] || item.image || '';
 
+  // A photo still uploading for the previously opened drink must not land here.
+  setMenuEditorPhotoUpload(form, null);
   form.dataset.editId = id;
   form.dataset.source = source;
   document.getElementById('menuEditorName').value = item.name || '';
@@ -1543,6 +1705,16 @@ function openMenuEditorForRow(id, source = 'current') {
   }
 
   modal.classList.remove('hidden');
+}
+
+// While a picked photo uploads, Save Drink waits so the drink keeps that photo.
+function setMenuEditorPhotoUpload(form, token) {
+  if (token) form.dataset.uploadToken = token;
+  else delete form.dataset.uploadToken;
+  const submitButton = form.querySelector?.('button[type="submit"]');
+  if (!submitButton) return;
+  submitButton.disabled = !!token;
+  submitButton.textContent = token ? 'Uploading photo...' : 'Save Drink';
 }
 
 function ensureDrinkPromptModal() {
@@ -1938,6 +2110,10 @@ async function initializeMenuPage() {
 }
 
 initializeMenuPage();
+
+// Drinks without a photo (or with a missing file) show the plain backdrop, not a broken image.
+modalImg.addEventListener('error', () => { modalImg.style.visibility = 'hidden'; });
+modalImg.addEventListener('load', () => { modalImg.style.visibility = ''; });
 
 closeBtn.addEventListener('click', closeModal);
 overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });

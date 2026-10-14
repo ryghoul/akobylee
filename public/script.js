@@ -466,6 +466,9 @@
       btn.textContent = 'Publishing...';
       try {
         await window.AKOEditor[methodName]();
+      } catch (error) {
+        console.error('[editor] publish failed:', error);
+        alert(`Publish failed. ${error?.message || 'Please try again.'}`);
       } finally {
         btn.disabled = false;
         btn.textContent = originalLabel;
