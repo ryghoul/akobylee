@@ -13,46 +13,19 @@
   // redefined here, so there's one escaping implementation to keep correct.
   const escapeHtml = window.AKO.escapeHtml;
 
-  const KNOWN_SECTION_LABELS = { shirts: 'Shirts', bags: 'Bags', bandanas: 'Bandanas' };
-  const NEW_SECTION_VALUE = '__new__';
+  const getSections = () => window.AKOShop?.getSections?.() || [];
+  const sectionOptionLabel = section => section.label + (section.hidden ? ' (hidden from customers)' : '');
 
-  function sectionLabel(section) {
-    return KNOWN_SECTION_LABELS[section] || (section.charAt(0).toUpperCase() + section.slice(1));
-  }
-
-  // Sections currently rendered on the page (built-in + any custom ones
-  // staff have already created) — read straight from the DOM rather than
-  // adding another shop.js API, since every section already carries a
-  // data-section attribute.
-  function knownSections() {
-    return [...document.querySelectorAll('.shop-section[data-section]')]
-      .map(el => el.dataset.section)
-      .filter(Boolean)
-      .sort((a, b) => sectionLabel(a).localeCompare(sectionLabel(b)));
-  }
-
+  // The item form's collection list, in page order. New collections are made
+  // with Create Collection, so every item lands in a named collection.
   function populateSectionSelect(selected) {
     const select = document.getElementById('shopItemSection');
-    const newLabel = document.getElementById('shopItemNewSectionLabel');
-    const newInput = document.getElementById('shopItemNewSection');
     if (!select) return;
-
-    const sections = knownSections();
-    select.innerHTML = sections.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(sectionLabel(s))}</option>`).join('')
-      + `<option value="${NEW_SECTION_VALUE}">+ Create new section...</option>`;
-
-    if (selected && sections.includes(selected)) {
-      select.value = selected;
-    } else if (selected) {
-      // Selected item's section isn't in the known list for some reason —
-      // fall back to "new section" so the value isn't silently dropped.
-      select.value = NEW_SECTION_VALUE;
-      if (newInput) newInput.value = selected;
-    }
-
-    const isNew = select.value === NEW_SECTION_VALUE;
-    if (newLabel) newLabel.style.display = isNew ? '' : 'none';
-    if (newInput && !isNew) newInput.value = '';
+    const sections = getSections();
+    select.innerHTML = sections.length
+      ? sections.map(s => `<option value="${escapeHtml(s.key)}">${escapeHtml(sectionOptionLabel(s))}</option>`).join('')
+      : '<option value="">No collections yet — use Create Collection first</option>';
+    if (selected && sections.some(s => s.key === selected)) select.value = selected;
   }
 
   function getSelectedCard() {
@@ -184,12 +157,8 @@
             <input id="shopItemProductKey" name="productKey" type="text" placeholder="shirt|V3" />
           </label>
           <label>
-            Section
+            Collection
             <select id="shopItemSection" name="section"></select>
-          </label>
-          <label id="shopItemNewSectionLabel" style="display:none">
-            New section name
-            <input id="shopItemNewSection" type="text" placeholder="e.g. hats" />
           </label>
           <label>
             Name
@@ -303,14 +272,6 @@
 
     window.AKO.wireModalDismiss(modal, 'shopItemCancel');
 
-    modal.querySelector('#shopItemSection').addEventListener('change', (event) => {
-      const isNew = event.target.value === NEW_SECTION_VALUE;
-      const newLabel = document.getElementById('shopItemNewSectionLabel');
-      const newInput = document.getElementById('shopItemNewSection');
-      if (newLabel) newLabel.style.display = isNew ? '' : 'none';
-      if (isNew && newInput) newInput.focus();
-    });
-
     modal.querySelector('#shopItemForm').addEventListener('submit', async (event) => {
       event.preventDefault();
       const form = event.currentTarget;
@@ -327,11 +288,8 @@
       const priceDollars = parseFloat(document.getElementById('shopItemPrice').value);
       const price = Number.isFinite(priceDollars) ? Math.round(priceDollars * 100) : 0;
 
-      const sectionSelectValue = document.getElementById('shopItemSection').value;
-      const section = sectionSelectValue === NEW_SECTION_VALUE
-        ? document.getElementById('shopItemNewSection').value.trim()
-        : sectionSelectValue;
-      if (!section) { alert('Enter a name for the new section.'); return; }
+      const section = document.getElementById('shopItemSection').value;
+      if (!section) { alert('Create a collection first (Create Collection in the toolbar), then add the item to it.'); return; }
 
       const payload = {
         ...readSimpleShopItemFields(),
@@ -600,9 +558,336 @@
     return publishData;
   }
 
+  /* ── Collections: create, rename/style, delete, reorder ── */
+
+  const COLLECTION_STYLES = [
+    { value: 'grid', name: 'Grid', hint: 'photo grid; sizes and Add to cart appear on hover (like Shirts)' },
+    { value: 'row', name: 'Row', hint: 'wide rows with description and price (like Bags)' },
+    { value: 'tile', name: 'Tile', hint: 'compact colored tiles (like Bandanas)' },
+  ];
+  const ARCHIVED_KEY = 'archived';
+
+  async function sendCollectionRequest(url, method, body) {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) {
+      window.AKO?.editor?.setEditorMode?.(false);
+      window.AKO?.editor?.openLoginModal?.();
+    }
+    return { res, data };
+  }
+
+  function showFormError(id, message) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = message || '';
+    el.hidden = !message;
+  }
+
+  function ensureCollectionModal() {
+    if (document.getElementById('shopCollectionModal')) return;
+    const modal = document.createElement('div');
+    modal.id = 'shopCollectionModal';
+    modal.className = 'menu-editor-modal hidden';
+    modal.innerHTML = `
+      <div class="menu-editor-panel" role="dialog" aria-modal="true" aria-labelledby="shopCollectionTitle">
+        <button type="button" class="menu-editor-close" aria-label="Close">×</button>
+        <h3 id="shopCollectionTitle">Create Collection</h3>
+        <form id="shopCollectionForm" class="menu-editor-form" novalidate>
+          <label>
+            Collection name
+            <input id="shopCollectionName" type="text" maxlength="60" placeholder="e.g. Fall Drop 2026" />
+          </label>
+          <fieldset class="collection-style-picker">
+            <legend>Card style</legend>
+            ${COLLECTION_STYLES.map(style => `
+              <label class="collection-style-option">
+                <input type="radio" name="collectionStyle" value="${style.value}" />
+                <span><strong>${style.name}</strong> — ${style.hint}</span>
+              </label>`).join('')}
+          </fieldset>
+          <p id="shopCollectionError" class="collection-error" role="alert" hidden></p>
+          <div class="menu-editor-actions">
+            <button type="button" class="secondary-btn" id="shopCollectionCancel">Cancel</button>
+            <button type="submit" id="shopCollectionSubmit">Create Collection</button>
+          </div>
+        </form>
+      </div>`;
+    window.AKO.wireModalDismiss(modal, 'shopCollectionCancel');
+
+    modal.querySelector('#shopCollectionForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const editKey = form.dataset.editKey || '';
+      const label = document.getElementById('shopCollectionName').value.trim();
+      const style = form.querySelector('input[name="collectionStyle"]:checked')?.value;
+      if (!label) { showFormError('shopCollectionError', 'Give the collection a name.'); return; }
+      if (!style) { showFormError('shopCollectionError', 'Choose a card style.'); return; }
+      showFormError('shopCollectionError', '');
+
+      const submitBtn = document.getElementById('shopCollectionSubmit');
+      submitBtn.disabled = true;
+      try {
+        const { res, data } = editKey
+          ? await sendCollectionRequest(`/api/shop-sections/${encodeURIComponent(editKey)}`, 'PUT', { label, style })
+          : await sendCollectionRequest('/api/shop-sections', 'POST', { label, style });
+        if (!res.ok || !data.ok) {
+          showFormError('shopCollectionError', data.error || 'Could not save the collection.');
+          return;
+        }
+        modal.classList.add('hidden');
+        await window.AKOShop?.reload();
+        // A filter left on from browsing could hide the collection just saved.
+        window.AKOShop?.showAll?.();
+        const key = data.section?.key || editKey;
+        document.querySelector(`.shop-section[data-section="${CSS.escape(key)}"]`)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      } catch (error) {
+        showFormError('shopCollectionError', 'Network error. Please try again.');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    document.body.appendChild(modal);
+  }
+
+  function openCollectionModal(section) {
+    ensureCollectionModal();
+    const form = document.getElementById('shopCollectionForm');
+    form.reset();
+    showFormError('shopCollectionError', '');
+    if (section) form.dataset.editKey = section.key; else delete form.dataset.editKey;
+    document.getElementById('shopCollectionTitle').textContent = section ? `Rename / style — ${section.label}` : 'Create Collection';
+    document.getElementById('shopCollectionSubmit').textContent = section ? 'Save' : 'Create Collection';
+    document.getElementById('shopCollectionName').value = section?.label || '';
+    const radio = section && form.querySelector(`input[name="collectionStyle"][value="${section.style}"]`);
+    if (radio) radio.checked = true;
+    document.getElementById('shopCollectionModal').classList.remove('hidden');
+    document.getElementById('shopCollectionName').focus();
+  }
+
+  // New collections go to the top of the page.
+  function createShopCollection() {
+    openCollectionModal(null);
+  }
+
+  function ensureCollectionDeleteModal() {
+    if (document.getElementById('shopCollectionDeleteModal')) return;
+    const modal = document.createElement('div');
+    modal.id = 'shopCollectionDeleteModal';
+    modal.className = 'menu-editor-modal hidden';
+    modal.innerHTML = `
+      <div class="menu-editor-panel" role="dialog" aria-modal="true" aria-labelledby="shopCollectionDeleteTitle">
+        <button type="button" class="menu-editor-close" aria-label="Close">×</button>
+        <h3 id="shopCollectionDeleteTitle">Delete collection</h3>
+        <form id="shopCollectionDeleteForm" class="menu-editor-form">
+          <p id="shopCollectionDeleteMessage"></p>
+          <label id="shopCollectionMoveLabel">
+            <span id="shopCollectionMoveText"></span>
+            <select id="shopCollectionMoveTo"></select>
+          </label>
+          <p id="shopCollectionDeleteError" class="collection-error" role="alert" hidden></p>
+          <div class="menu-editor-actions">
+            <button type="button" class="secondary-btn" id="shopCollectionDeleteCancel">Cancel</button>
+            <button type="submit" id="shopCollectionDeleteSubmit">Delete</button>
+          </div>
+        </form>
+      </div>`;
+    window.AKO.wireModalDismiss(modal, 'shopCollectionDeleteCancel');
+
+    modal.querySelector('#shopCollectionDeleteForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const key = form.dataset.deleteKey;
+      const moveLabel = document.getElementById('shopCollectionMoveLabel');
+      const moveTo = moveLabel.hidden ? undefined : document.getElementById('shopCollectionMoveTo').value;
+      const submitBtn = document.getElementById('shopCollectionDeleteSubmit');
+      submitBtn.disabled = true;
+      try {
+        const { res, data } = await sendCollectionRequest(`/api/shop-sections/${encodeURIComponent(key)}`, 'DELETE', moveTo ? { moveTo } : {});
+        if (!res.ok || !data.ok) {
+          // e.g. items were added since this dialog opened: refresh it.
+          showFormError('shopCollectionDeleteError', data.error || 'Could not delete the collection.');
+          if (data.needsMove) {
+            await window.AKOShop?.reload();
+            fillCollectionDeleteForm(key);
+            showFormError('shopCollectionDeleteError', data.error);
+          }
+          return;
+        }
+        modal.classList.add('hidden');
+        await window.AKOShop?.reload();
+      } catch (error) {
+        showFormError('shopCollectionDeleteError', 'Network error. Please try again.');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    document.body.appendChild(modal);
+  }
+
+  // A collection with items asks where they go: the Archived collection
+  // (hidden from customers) or another collection the staff member picks.
+  function fillCollectionDeleteForm(key) {
+    const sections = getSections();
+    const section = sections.find(s => s.key === key);
+    if (!section) return false;
+    const items = (window.AKOShop?.getAllProducts() || []).filter(p => p.section === key);
+    const form = document.getElementById('shopCollectionDeleteForm');
+    form.dataset.deleteKey = key;
+    showFormError('shopCollectionDeleteError', '');
+    document.getElementById('shopCollectionDeleteTitle').textContent = `Delete "${section.label}"`;
+
+    const moveLabel = document.getElementById('shopCollectionMoveLabel');
+    const submitBtn = document.getElementById('shopCollectionDeleteSubmit');
+    if (!items.length) {
+      document.getElementById('shopCollectionDeleteMessage').textContent = `Delete the empty collection "${section.label}"?`;
+      moveLabel.hidden = true;
+      submitBtn.textContent = 'Delete collection';
+      return true;
+    }
+
+    const archived = sections.find(s => s.key === ARCHIVED_KEY);
+    const options = [];
+    if (key !== ARCHIVED_KEY) {
+      options.push({ value: ARCHIVED_KEY, label: archived ? sectionOptionLabel(archived) : 'Archived (hidden from customers)' });
+    }
+    sections.filter(s => s.key !== key && s.key !== ARCHIVED_KEY)
+      .forEach(s => options.push({ value: s.key, label: sectionOptionLabel(s) }));
+    if (!options.length) {
+      document.getElementById('shopCollectionDeleteMessage').textContent = `"${section.label}" still has ${items.length} item${items.length === 1 ? '' : 's'}, and there is no other collection to move them to. Create another collection first.`;
+      moveLabel.hidden = true;
+      submitBtn.disabled = true;
+      return true;
+    }
+    submitBtn.disabled = false;
+    document.getElementById('shopCollectionDeleteMessage').textContent =
+      `"${section.label}" has ${items.length} item${items.length === 1 ? '' : 's'}. They will be moved before the collection is deleted.`;
+    document.getElementById('shopCollectionMoveText').textContent = 'Move its items to';
+    document.getElementById('shopCollectionMoveTo').innerHTML = options
+      .map(option => `<option value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</option>`).join('');
+    moveLabel.hidden = false;
+    submitBtn.textContent = 'Move items and delete';
+    return true;
+  }
+
+  function deleteShopCollection(key) {
+    ensureCollectionDeleteModal();
+    document.getElementById('shopCollectionDeleteSubmit').disabled = false;
+    if (!fillCollectionDeleteForm(key)) return;
+    document.getElementById('shopCollectionDeleteModal').classList.remove('hidden');
+    document.getElementById('shopCollectionDeleteCancel').focus();
+  }
+
+  // Saves a full new order; baseKeys lets the server refuse it if someone
+  // else reordered meanwhile. Either way the page shows the saved order.
+  let savingOrder = false;
+  async function saveCollectionOrder(keys) {
+    const baseKeys = getSections().map(s => s.key);
+    if (savingOrder || JSON.stringify(keys) === JSON.stringify(baseKeys)) return;
+    savingOrder = true;
+    try {
+      const { res, data } = await sendCollectionRequest('/api/shop-sections/order', 'POST', { keys, baseKeys });
+      if (!res.ok || !data.ok) alert(data.error || 'Could not save the new order.');
+    } catch (error) {
+      alert('Network error. The order was not saved.');
+    } finally {
+      savingOrder = false;
+      await window.AKOShop?.reload();
+    }
+  }
+
+  function moveCollection(key, delta) {
+    const keys = getSections().map(s => s.key);
+    const from = keys.indexOf(key);
+    const to = from + delta;
+    if (from < 0 || to < 0 || to >= keys.length) return;
+    [keys[from], keys[to]] = [keys[to], keys[from]];
+    saveCollectionOrder(keys);
+  }
+
+  // Collection header buttons and drag handles, handled once on the
+  // container (it survives re-renders; its contents don't).
+  function bindCollectionTools() {
+    const container = document.getElementById('shopSections');
+    if (!container || container.dataset.collectionToolsBound) return;
+    container.dataset.collectionToolsBound = '1';
+    const isEditor = () => document.body.classList.contains('editor-enabled');
+    let dragKey = null;
+    const clearDropMarks = () => container.querySelectorAll('.drop-before, .drop-after, .section-dragging')
+      .forEach(el => el.classList.remove('drop-before', 'drop-after', 'section-dragging'));
+
+    container.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-section-action]');
+      if (!button || !isEditor()) return;
+      event.stopPropagation();
+      const key = button.closest('.shop-section')?.dataset.section;
+      const action = button.dataset.sectionAction;
+      if (!key) return;
+      if (action === 'up') moveCollection(key, -1);
+      else if (action === 'down') moveCollection(key, 1);
+      else if (action === 'edit') openCollectionModal(getSections().find(s => s.key === key));
+      else if (action === 'delete') deleteShopCollection(key);
+    });
+
+    container.addEventListener('dragstart', (event) => {
+      const handle = event.target.closest?.('.section-drag');
+      if (!handle || !isEditor()) return;
+      const section = handle.closest('.shop-section');
+      dragKey = section.dataset.section;
+      section.classList.add('section-dragging');
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', dragKey);
+      event.dataTransfer.setDragImage(section, 24, 24);
+    });
+
+    const dropPosition = (event, target) => {
+      const rect = target.getBoundingClientRect();
+      return event.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+    };
+
+    container.addEventListener('dragover', (event) => {
+      if (!dragKey) return;
+      const target = event.target.closest?.('.shop-section');
+      if (!target || target.dataset.section === dragKey) return;
+      event.preventDefault();
+      container.querySelectorAll('.drop-before, .drop-after').forEach(el => el.classList.remove('drop-before', 'drop-after'));
+      target.classList.add(dropPosition(event, target) === 'before' ? 'drop-before' : 'drop-after');
+    });
+
+    container.addEventListener('drop', (event) => {
+      if (!dragKey) return;
+      event.preventDefault();
+      const target = event.target.closest?.('.shop-section');
+      const movedKey = dragKey;
+      dragKey = null;
+      clearDropMarks();
+      if (!target || target.dataset.section === movedKey) return;
+      const keys = getSections().map(s => s.key).filter(key => key !== movedKey);
+      const at = keys.indexOf(target.dataset.section) + (dropPosition(event, target) === 'after' ? 1 : 0);
+      keys.splice(at, 0, movedKey);
+      saveCollectionOrder(keys);
+    });
+
+    container.addEventListener('dragend', () => {
+      dragKey = null;
+      clearDropMarks();
+    });
+  }
+
   /* ── Editor-mode hook (called by script.js after every toolbar toggle,
         and by shop.js after every catalog render) ── */
   function refreshMenuEditorState() {
+    // Entering or leaving editor mode shows or hides the editor-only parts
+    // (collection tools, empty and hidden collections).
+    window.AKOShop?.renderIfModeChanged?.();
+    bindCollectionTools();
     bindShopCardSelection();
   }
 
@@ -611,6 +896,7 @@
     editSelectedShopItem,
     editSelectedShopItemStock,
     deleteSelectedShopItem,
+    createShopCollection,
     publishShopCatalogToGitHub,
     refreshMenuEditorState,
   };

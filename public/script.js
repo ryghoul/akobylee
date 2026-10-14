@@ -189,7 +189,8 @@
     const next = [];
     cart.forEach(item => {
       const match = bySku.get(item.sku);
-      if (!match || match.product.active === false) {
+      // available is false for hidden products and those in a hidden collection.
+      if (!match || match.product.active === false || match.product.available === false) {
         notices.push(`${itemTitle(item)} is no longer available and was removed.`);
         return;
       }
@@ -620,12 +621,13 @@
     const editBtn = makeToolbarButton('Edit Selected', () => callEditor('editSelectedShopItem'));
     const stockBtn = makeToolbarButton('Edit Stock', () => callEditor('editSelectedShopItemStock'));
     const deleteBtn = makeToolbarButton('Delete Selected', () => callEditor('deleteSelectedShopItem'));
+    const collectionBtn = makeToolbarButton('Create Collection', () => callEditor('createShopCollection'));
 
     const publishBtn = makePublishButton('publishShopCatalogToGitHub');
 
     const exitBtn = makeToolbarButton('Exit Editor', () => setEditorMode(false));
 
-    toolbar.append(addBtn, editBtn, stockBtn, deleteBtn, publishBtn, exitBtn);
+    toolbar.append(addBtn, editBtn, stockBtn, deleteBtn, collectionBtn, publishBtn, exitBtn);
     return toolbar;
   }
 

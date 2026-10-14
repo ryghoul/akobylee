@@ -8,9 +8,7 @@
 
   let catalog = [];        // full product list from the API
   let catalogByKey = {};   // productKey -> product
-
-  const SECTION_LABELS = { shirts: 'Shirts', bags: 'Bags', bandanas: 'Bandanas — S.2' };
-  const SECTION_EMOJI  = { shirts: '👕', bags: '🛍', bandanas: '🎽' };
+  let sections = [];       // collections in page order: { key, label, style, order, hidden }
 
   /* ── Helpers ── */
 
@@ -44,10 +42,6 @@
     if (stock === 0) return { text: 'Sold out', cls: 'sold-out' };
     if (stock <= 3)  return { text: `Only ${stock} left`, cls: 'low-stock' };
     return             { text: 'In stock', cls: 'in-stock' };
-  }
-
-  function sectionLabel(section) {
-    return SECTION_LABELS[section] || (section.charAt(0).toUpperCase() + section.slice(1));
   }
 
   function slugify(str) {
@@ -164,17 +158,13 @@
       </div>`;
   }
 
-  // Generic fallback for staff-created sections beyond shirts/bags/bandanas.
-  // Reuses the bag-card layout, including its size buttons.
-  function renderGenericCard(p) {
-    return renderBagCard(p);
-  }
-
-  const SECTION_CONFIG = {
-    shirts:   { gridId: 'shirtsGrid', render: renderShirtCard },
-    bags:     { gridId: 'bagsGrid', render: renderBagCard },
-    bandanas: { gridId: 'bandanaGrid', render: renderBandanaCard },
+  // Each collection picks one of three card styles.
+  const STYLE_LAYOUTS = {
+    grid: { gridClass: 'shirts-grid', render: renderShirtCard, emoji: '👕' },
+    row:  { gridClass: 'bags-grid', render: renderBagCard, emoji: '🛍' },
+    tile: { gridClass: 'bandana-grid', render: renderBandanaCard, emoji: '🎽' },
   };
+  const layoutFor = section => STYLE_LAYOUTS[section?.style] || STYLE_LAYOUTS.row;
 
   /* ── Rendering orchestration ── */
 
@@ -187,69 +177,69 @@
     return map;
   }
 
-  function ensureSectionElement(section) {
-    let el = document.querySelector(`.shop-section[data-section="${CSS.escape(section)}"]`);
-    if (el) return el;
-
-    const main = document.querySelector('.shop-wrap');
-    if (!main) return null;
-
-    el = document.createElement('section');
-    el.className = 'shop-section';
-    el.id = 'sec-' + slugify(section);
-    el.dataset.section = section;
-
-    const label = document.createElement('div');
-    label.className = 'section-label';
-    label.textContent = sectionLabel(section);
-    el.appendChild(label);
-
-    const grid = document.createElement('div');
-    grid.className = 'bags-grid generic-grid';
-    el.appendChild(grid);
-
-    main.appendChild(el);
-    return el;
+  // Customers see a collection only if it isn't hidden and has something to
+  // buy; staff see every collection, including empty and hidden ones.
+  function shownSections(bySection, editor) {
+    if (editor) return sections;
+    return sections.filter(s => !s.hidden && (bySection.get(s.key) || []).some(p => p.available !== false && p.active !== false));
   }
 
-  function renderGrid(grid, products, templateFn, editor) {
-    if (!grid) return;
-    const visible = products.filter(p => editor || p.active !== false);
-    if (!visible.length) {
-      grid.innerHTML = '<p class="shop-empty">Nothing here yet.</p>';
-      return;
-    }
-    grid.innerHTML = visible.map(templateFn).join('');
+  function sectionToolsHtml(section, index, count) {
+    const name = escapeHtml(section.label);
+    return `
+      <div class="section-tools">
+        <button type="button" class="section-drag" draggable="true" data-section-action="drag" title="Drag to move" aria-label="Drag ${name} to move it">⠿</button>
+        <button type="button" data-section-action="up" aria-label="Move ${name} up" ${index === 0 ? 'disabled' : ''}>↑</button>
+        <button type="button" data-section-action="down" aria-label="Move ${name} down" ${index === count - 1 ? 'disabled' : ''}>↓</button>
+        <button type="button" data-section-action="edit">Rename / style</button>
+        <button type="button" data-section-action="delete">Delete</button>
+      </div>`;
   }
 
-  function rebuildFilterRow(sections) {
+  function sectionHtml(section, products, editor, index, count) {
+    const layout = layoutFor(section);
+    const visible = products.filter(p => editor || (p.available !== false && p.active !== false));
+    const cards = visible.length ? visible.map(layout.render).join('') : '<p class="shop-empty">Nothing here yet.</p>';
+    return `
+      <section class="shop-section${section.hidden ? ' shop-section-hidden' : ''}" id="sec-${escapeHtml(slugify(section.key))}" data-section="${escapeHtml(section.key)}">
+        <div class="section-header">
+          <div class="section-label">${escapeHtml(section.label)}${section.hidden ? ' <span class="section-hidden-tag">Hidden from customers</span>' : ''}</div>
+          ${editor ? sectionToolsHtml(section, index, count) : ''}
+        </div>
+        <div class="${layout.gridClass}">${cards}</div>
+      </section>`;
+  }
+
+  function activeFilter() {
+    return document.querySelector('.filter-row .filter-btn.active')?.dataset.filter || 'all';
+  }
+
+  function applyFilter(filter) {
+    document.querySelectorAll('.shop-section').forEach(sec => {
+      sec.classList.toggle('hidden', filter !== 'all' && filter !== sec.dataset.section);
+    });
+  }
+
+  function rebuildFilterRow(visibleSections, forceFilter) {
     const row = document.querySelector('.filter-row');
     if (!row) return;
-    const current = row.querySelector('.filter-btn.active')?.dataset.filter || 'all';
+    let current = forceFilter || activeFilter();
+    if (current !== 'all' && !visibleSections.some(s => s.key === current)) current = 'all';
 
-    const keys = ['all', ...sections];
-    row.innerHTML = keys.map(key => {
-      const label = key === 'all' ? 'All' : sectionLabel(key).replace(/\s*—.*$/, '');
+    const entries = [{ key: 'all', label: 'All' }, ...visibleSections.map(s => ({ key: s.key, label: s.label.replace(/\s*—.*$/, '') }))];
+    row.innerHTML = entries.map(({ key, label }) => {
       const activeCls = key === current ? ' active' : '';
       return `<button type="button" class="filter-btn${activeCls}" data-filter="${escapeHtml(key)}">${escapeHtml(label)}</button>`;
     }).join('');
 
-    bindFilterButtons();
-  }
-
-  function bindFilterButtons() {
-    document.querySelectorAll('.filter-btn').forEach(btn => {
+    row.querySelectorAll('.filter-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        row.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        const filter = btn.dataset.filter;
-        document.querySelectorAll('.shop-section').forEach(sec => {
-          const key = sec.dataset.section;
-          if (filter === 'all' || filter === key) sec.classList.remove('hidden');
-          else sec.classList.add('hidden');
-        });
+        applyFilter(btn.dataset.filter);
       });
     });
+    applyFilter(current);
   }
 
   function bindCardInteractions() {
@@ -328,7 +318,7 @@
           name: product.name,
           variant,
           price: product.price,
-          emoji: SECTION_EMOJI[product.section] || '🛒',
+          emoji: layoutFor(sections.find(s => s.key === product.section)).emoji,
           image: product.image || '',
           maxQty: stock,
         });
@@ -336,42 +326,28 @@
     });
   }
 
-  function renderAll() {
+  let renderedEditorMode = null;
+
+  // showAll resets the filter to "All" — done whenever editor mode switches,
+  // so staff never work on (or create collections into) a filtered page.
+  function renderAll({ showAll = false } = {}) {
+    const container = document.getElementById('shopSections');
+    if (!container) return;
     const bySection = productsBySection();
     const editor = isEditorMode();
-    const sectionsInOrder = [...bySection.keys()];
+    const modeChanged = renderedEditorMode !== null && renderedEditorMode !== editor;
+    renderedEditorMode = editor;
+    const visibleSections = shownSections(bySection, editor);
 
-    // Create DOM for any section the catalog references that isn't already
-    // in the page (custom staff-created sections beyond the 3 built-in ones).
-    sectionsInOrder.forEach(ensureSectionElement);
-
-    Object.entries(SECTION_CONFIG).forEach(([section, cfg]) => {
-      renderGrid(document.getElementById(cfg.gridId), bySection.get(section) || [], cfg.render, editor);
-    });
-
-    sectionsInOrder.filter(s => !SECTION_CONFIG[s]).forEach(section => {
-      const el = ensureSectionElement(section);
-      const grid = el?.querySelector('.generic-grid');
-      renderGrid(grid, bySection.get(section) || [], renderGenericCard, editor);
-    });
-
-    // Remove any previously-created custom section that no longer has any
-    // products. Unlike the 3 built-in sections (permanent parts of the page,
-    // shown with a "Nothing here yet." state when empty), a dynamically
-    // created section should disappear once its last item is deleted —
-    // otherwise its stale DOM (and stale card) is never touched again, since
-    // the loop above only visits sections that currently have products.
-    document.querySelectorAll('.shop-section').forEach(el => {
-      const section = el.dataset.section;
-      if (SECTION_CONFIG[section]) return; // built-in, never remove
-      if (!sectionsInOrder.includes(section)) el.remove();
-    });
+    container.innerHTML = visibleSections.length
+      ? visibleSections.map((section, index) => sectionHtml(section, bySection.get(section.key) || [], editor, index, visibleSections.length)).join('')
+      : `<p class="shop-empty">${editor ? 'No collections yet. Use Create Collection to add one.' : 'Nothing here yet — check back soon.'}</p>`;
 
     bindCardInteractions();
-    rebuildFilterRow(sectionsInOrder);
+    rebuildFilterRow(visibleSections, showAll || modeChanged ? 'all' : undefined);
 
     // Let the shop editor (if loaded) re-bind card selection after every
-    // render, since renderGrid() replaces innerHTML and drops listeners.
+    // render, since the render replaces innerHTML and drops listeners.
     if (window.AKOEditor && typeof window.AKOEditor.refreshMenuEditorState === 'function') {
       window.AKOEditor.refreshMenuEditorState();
     }
@@ -386,6 +362,7 @@
       if (!res.ok || !payload.ok) throw new Error(payload.error || 'Failed to load shop catalog');
 
       catalog = Array.isArray(payload.products) ? payload.products : [];
+      sections = Array.isArray(payload.sections) ? payload.sections : [];
       // Derived fresh from catalog every load, never mutated independently,
       // so the two can't drift out of sync with each other.
       catalogByKey = Object.fromEntries(catalog.map(p => [p.productKey, p]));
@@ -411,11 +388,18 @@
   });
 
   // Exposed for shop-editor.js: reload() re-fetches the catalog and re-renders;
-  // getProduct() looks up a currently-loaded product's full data by productKey.
+  // getProduct() looks up a currently-loaded product's full data by productKey;
+  // getSections() lists every collection in page order; renderIfModeChanged()
+  // re-renders after editor mode is switched (editor-only parts appear/vanish).
   window.AKOShop = {
     reload: loadCatalog,
     getProduct: (productKey) => catalogByKey[productKey],
     getAllProducts: () => catalog.slice(),
+    getSections: () => sections.map(section => ({ ...section })),
+    renderIfModeChanged: () => {
+      if (renderedEditorMode !== null && renderedEditorMode !== isEditorMode()) renderAll();
+    },
+    showAll: () => renderAll({ showAll: true }),
   };
 
 })();

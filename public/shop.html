@@ -95,38 +95,15 @@
     </div>
 
     <!-- Filter row -->
+    <!-- Filter buttons, one per collection, built by shop.js -->
     <div class="filter-row">
       <button class="filter-btn active" data-filter="all">All</button>
-      <button class="filter-btn" data-filter="shirts">Shirts</button>
-      <button class="filter-btn" data-filter="bags">Bags</button>
-      <button class="filter-btn" data-filter="bandanas">Bandanas</button>
     </div>
 
-    <!-- ── SHIRTS ── -->
-    <section class="shop-section" id="sec-shirts" data-section="shirts">
-      <div class="section-label">Shirts</div>
-      <div class="shirts-grid" id="shirtsGrid">
-        <p class="shop-loading">Loading…</p>
-      </div>
-    </section>
-
-    <!-- ── BAGS ── -->
-    <section class="shop-section" id="sec-bags" data-section="bags">
-      <div class="section-label">Bags</div>
-      <div class="bags-grid" id="bagsGrid">
-        <p class="shop-loading">Loading…</p>
-      </div>
-    </section>
-
-    <!-- ── BANDANAS ── -->
-    <section class="shop-section" id="sec-bandanas" data-section="bandanas">
-      <div class="section-label">Bandanas — S.2</div>
-      <div class="bandana-grid" id="bandanaGrid">
-        <p class="shop-loading">Loading…</p>
-      </div>
-    </section>
-
-    <!-- Additional staff-created sections are appended here dynamically by shop.js -->
+    <!-- Collections, in the order staff set, rendered by shop.js -->
+    <div id="shopSections">
+      <p class="shop-loading">Loading…</p>
+    </div>
 
   </main>
 

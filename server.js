@@ -96,6 +96,7 @@ try {
 
 const Product = require('./models/Product');
 const OrderEvent = require('./models/OrderEvent');
+const ShopSection = require('./models/ShopSection');
 
 // Sku format used everywhere: `${productKey}|${size}`. Sizes are validated
 // (Product.js) to never contain "|", so splitting off the last segment
@@ -795,8 +796,11 @@ if (stripe) {
       // not catalog-sized.
       const candidateProductKeys = [...new Set(cart.map(line => productKeyFromSku(line.sku)))];
       const products = await Product.find({ productKey: { $in: candidateProductKeys }, active: true }).lean();
+      // Products in a hidden collection (Archived) can't be bought either.
+      const hiddenSections = await hiddenShopSectionKeys();
       const skuToProduct = {};
       for (const p of products) {
+        if (hiddenSections.has(p.section)) continue;
         for (const size of p.sizes) skuToProduct[skuFor(p.productKey, size)] = p;
       }
 
@@ -892,12 +896,81 @@ if (stripe) {
 // Shop Catalog API (read)
 // ─────────────────────────────────────────────────────────────
 
-// GET /api/shop-catalog -> { ok, products: [{ ...product, stock: {size: count} }] }
+const SHOP_SECTION_STYLES = ['grid', 'row', 'tile'];
+const ARCHIVED_SECTION_KEY = 'archived';
+// Name and style for the page's original sections when they are first adopted.
+const BUILT_IN_SHOP_SECTIONS = [
+  { key: 'shirts', label: 'Shirts', style: 'grid' },
+  { key: 'bags', label: 'Bags', style: 'row' },
+  { key: 'bandanas', label: 'Bandanas — S.2', style: 'tile' },
+  { key: ARCHIVED_SECTION_KEY, label: 'Archived', style: 'row', hidden: true },
+];
+
+function slugifySectionLabel(label) {
+  return String(label).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'collection';
+}
+
+async function sortedShopSections() {
+  return ShopSection.find({}).sort({ order: 1, createdAt: 1 }).lean();
+}
+
+// Gives every section a product uses an entry, so no product ever drops off
+// the page: on first run that adopts the original sections (keeping their
+// look and order), and later it catches sections set outside the editor.
+async function ensureShopSections() {
+  const existing = await ShopSection.find({}, { key: 1, order: 1 }).lean();
+  const known = new Set(existing.map(section => section.key));
+  const missing = (await Product.distinct('section')).filter(key => key && !known.has(key));
+  if (!missing.length) return;
+  const builtInIndex = key => {
+    const index = BUILT_IN_SHOP_SECTIONS.findIndex(section => section.key === key);
+    return index < 0 ? BUILT_IN_SHOP_SECTIONS.length : index;
+  };
+  missing.sort((a, b) => builtInIndex(a) - builtInIndex(b) || a.localeCompare(b));
+  let nextOrder = existing.length ? Math.max(...existing.map(section => section.order || 0)) + 1 : 0;
+  for (const key of missing) {
+    const preset = BUILT_IN_SHOP_SECTIONS.find(section => section.key === key);
+    try {
+      await ShopSection.updateOne({ key }, {
+        $setOnInsert: {
+          label: preset?.label || key.charAt(0).toUpperCase() + key.slice(1),
+          style: preset?.style || 'row',
+          hidden: !!preset?.hidden,
+          order: nextOrder++,
+        },
+      }, { upsert: true });
+    } catch (error) {
+      if (error?.code !== 11000) throw error; // another request just created it
+    }
+  }
+}
+
+async function ensureArchivedSection() {
+  const last = await ShopSection.findOne({}).sort({ order: -1 }).lean();
+  const preset = BUILT_IN_SHOP_SECTIONS.find(section => section.key === ARCHIVED_SECTION_KEY);
+  try {
+    await ShopSection.updateOne({ key: ARCHIVED_SECTION_KEY }, {
+      $setOnInsert: { label: preset.label, style: preset.style, hidden: true, order: (last?.order ?? 0) + 1 },
+    }, { upsert: true });
+  } catch (error) {
+    if (error?.code !== 11000) throw error;
+  }
+}
+
+async function hiddenShopSectionKeys() {
+  return new Set((await ShopSection.find({ hidden: true }, { key: 1 }).lean()).map(section => section.key));
+}
+
+// GET /api/shop-catalog -> { ok, sections: [...in page order], products: [{ ...product, stock: {size: count}, available }] }
 // Public (matches existing GET /api/menu-state precedent); returns inactive
-// products too — the storefront filters them client-side, editor mode shows
-// them with a "hidden" treatment.
+// products and hidden collections too — the storefront filters them
+// client-side, editor mode shows them with a "hidden" treatment. `available`
+// says whether customers can buy the product (active, in a visible collection).
 app.get('/api/shop-catalog', async (_req, res) => {
   try {
+    await ensureShopSections();
+    const sections = await sortedShopSections();
+    const hiddenSections = new Set(sections.filter(section => section.hidden).map(section => section.key));
     const products = await Product.find({}).sort({ section: 1, order: 1, createdAt: 1 }).lean();
 
     const skus = [];
@@ -917,10 +990,14 @@ app.get('/api/shop-catalog', async (_req, res) => {
         const sku = skuFor(p.productKey, size);
         stock[size] = typeof stockBySku[sku] === 'number' ? stockBySku[sku] : 0;
       }
-      return { ...p, stock };
+      return { ...p, stock, available: p.active !== false && !hiddenSections.has(p.section) };
     });
 
-    res.json({ ok: true, products: catalog });
+    res.json({
+      ok: true,
+      sections: sections.map(({ key, label, style, order, hidden }) => ({ key, label, style, order, hidden: !!hidden })),
+      products: catalog,
+    });
   } catch (e) {
     console.error('[shop-catalog] load error:', e);
     res.status(500).json({ ok: false, error: 'Failed to load shop catalog.' });
@@ -1003,6 +1080,9 @@ app.post('/api/shop-catalog', requireAdmin, async (req, res) => {
 
     const { data, errors } = sanitizeProductInput(req.body || {});
     if (errors.length) return res.status(400).json({ ok: false, error: errors.join('; ') });
+    if (!(await ShopSection.exists({ key: data.section }))) {
+      return res.status(400).json({ ok: false, error: 'Choose an existing collection for this item.' });
+    }
 
     const existing = await Product.findOne({ productKey }).lean();
     if (existing) return res.status(409).json({ ok: false, error: `A product with productKey "${productKey}" already exists.` });
@@ -1031,6 +1111,9 @@ app.put('/api/shop-catalog/:productKey', requireAdmin, async (req, res) => {
 
     const { data, errors } = sanitizeProductInput(req.body || {}, { partial: true });
     if (errors.length) return res.status(400).json({ ok: false, error: errors.join('; ') });
+    if (data.section !== undefined && data.section !== existing.section && !(await ShopSection.exists({ key: data.section }))) {
+      return res.status(400).json({ ok: false, error: 'Choose an existing collection for this item.' });
+    }
 
     const previousSizes = new Set(existing.sizes);
     Object.assign(existing, data);
@@ -1109,10 +1192,13 @@ app.post('/api/shop-catalog/publish', requireAdmin, async (_req, res) => {
     const products = await Product.find({}, { _id: 0, __v: 0, createdAt: 0, updatedAt: 0 })
       .sort({ section: 1, order: 1 })
       .lean();
+    const sections = await ShopSection.find({}, { _id: 0, __v: 0, createdAt: 0, updatedAt: 0 })
+      .sort({ order: 1 })
+      .lean();
 
     const publishResult = await publishJsonToGitHub(
       SHOP_CATALOG_REPO_PATH,
-      products,
+      { sections, products },
       `Update shop catalog (${new Date().toISOString()})`
     );
 
@@ -1120,6 +1206,121 @@ app.post('/api/shop-catalog/publish', requireAdmin, async (_req, res) => {
   } catch (e) {
     console.error('[shop-catalog] publish error:', e);
     res.status(500).json({ ok: false, error: e.message || 'Failed to publish shop catalog.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// Shop collections (sections) — staff only
+// ─────────────────────────────────────────────────────────────
+
+const MAX_SECTION_LABEL_LENGTH = 60;
+
+// Validates a collection name and style; a name must not match another
+// collection's (ignoring case). Returns { label, style } or { error }.
+function sanitizeSectionInput(body, sections, { partial = false, exceptKey = null } = {}) {
+  const out = {};
+  if (!partial || body?.label !== undefined) {
+    const label = String(body?.label ?? '').trim();
+    if (!label) return { error: 'Give the collection a name.' };
+    if (label.length > MAX_SECTION_LABEL_LENGTH) return { error: `Keep the name under ${MAX_SECTION_LABEL_LENGTH} characters.` };
+    if (sections.some(section => section.key !== exceptKey && section.label.trim().toLowerCase() === label.toLowerCase())) {
+      return { error: 'Another collection already has that name.' };
+    }
+    out.label = label;
+  }
+  if (!partial || body?.style !== undefined) {
+    if (!SHOP_SECTION_STYLES.includes(body?.style)) return { error: 'Choose a card style.' };
+    out.style = body.style;
+  }
+  return out;
+}
+
+function uniqueSectionKey(label, sections) {
+  const taken = new Set([...sections.map(section => section.key), ARCHIVED_SECTION_KEY]);
+  const base = slugifySectionLabel(label);
+  let key = base;
+  for (let n = 2; taken.has(key); n++) key = `${base}-${n}`;
+  return key;
+}
+
+// POST /api/shop-sections -> create a collection at the top of the page
+app.post('/api/shop-sections', requireAdmin, async (req, res) => {
+  try {
+    await ensureShopSections();
+    const sections = await sortedShopSections();
+    const input = sanitizeSectionInput(req.body, sections);
+    if (input.error) return res.status(400).json({ ok: false, error: input.error });
+    const order = sections.length ? Math.min(...sections.map(section => section.order || 0)) - 1 : 0;
+    const section = await ShopSection.create({ key: uniqueSectionKey(input.label, sections), ...input, order });
+    res.json({ ok: true, section });
+  } catch (e) {
+    console.error('[shop-sections] create error:', e);
+    res.status(500).json({ ok: false, error: 'Failed to create the collection.' });
+  }
+});
+
+// POST /api/shop-sections/order -> { keys: [every key, in the new order], baseKeys: [the order the editor saw] }
+// baseKeys guards against two staff reordering at once: if the order changed
+// since this editor loaded it, nothing is saved and the editor reloads.
+app.post('/api/shop-sections/order', requireAdmin, async (req, res) => {
+  try {
+    const current = (await sortedShopSections()).map(section => section.key);
+    const keys = Array.isArray(req.body?.keys) ? req.body.keys.map(String) : null;
+    const baseKeys = Array.isArray(req.body?.baseKeys) ? req.body.baseKeys.map(String) : null;
+    if (baseKeys && JSON.stringify(baseKeys) !== JSON.stringify(current)) {
+      return res.status(409).json({ ok: false, error: 'The collections were changed by someone else. Showing the latest order now.' });
+    }
+    if (!keys || keys.length !== current.length || new Set(keys).size !== keys.length || !keys.every(key => current.includes(key))) {
+      return res.status(400).json({ ok: false, error: 'The new order must list every collection once.' });
+    }
+    await ShopSection.bulkWrite(keys.map((key, order) => ({ updateOne: { filter: { key }, update: { $set: { order } } } })));
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[shop-sections] reorder error:', e);
+    res.status(500).json({ ok: false, error: 'Failed to save the new order.' });
+  }
+});
+
+// PUT /api/shop-sections/:key -> rename a collection and/or change its card style
+app.put('/api/shop-sections/:key', requireAdmin, async (req, res) => {
+  try {
+    const key = req.params.key;
+    const sections = await sortedShopSections();
+    if (!sections.some(section => section.key === key)) return res.status(404).json({ ok: false, error: 'Collection not found.' });
+    const input = sanitizeSectionInput(req.body, sections, { partial: true, exceptKey: key });
+    if (input.error) return res.status(400).json({ ok: false, error: input.error });
+    const section = await ShopSection.findOneAndUpdate({ key }, { $set: input }, { new: true });
+    res.json({ ok: true, section });
+  } catch (e) {
+    console.error('[shop-sections] update error:', e);
+    res.status(500).json({ ok: false, error: 'Failed to update the collection.' });
+  }
+});
+
+// DELETE /api/shop-sections/:key  body: { moveTo?: key }
+// A collection with items is only deleted once the staff member says where
+// they go: "archived" (hidden from customers, created if needed) or another
+// collection. Without moveTo the reply says how many items need a home.
+app.delete('/api/shop-sections/:key', requireAdmin, async (req, res) => {
+  try {
+    const key = req.params.key;
+    if (!(await ShopSection.exists({ key }))) return res.status(404).json({ ok: false, error: 'Collection not found.' });
+    const itemCount = await Product.countDocuments({ section: key });
+    if (itemCount) {
+      const moveTo = String(req.body?.moveTo || '');
+      if (!moveTo) {
+        return res.status(409).json({ ok: false, needsMove: true, itemCount, error: `This collection still has ${itemCount} item${itemCount === 1 ? '' : 's'}. Choose where to move them.` });
+      }
+      if (moveTo === key) return res.status(400).json({ ok: false, error: 'Choose a different collection to move the items to.' });
+      if (moveTo === ARCHIVED_SECTION_KEY) await ensureArchivedSection();
+      else if (!(await ShopSection.exists({ key: moveTo }))) return res.status(400).json({ ok: false, error: 'That collection no longer exists.' });
+      await Product.updateMany({ section: key }, { $set: { section: moveTo } });
+    }
+    await ShopSection.deleteOne({ key });
+    res.json({ ok: true, moved: itemCount });
+  } catch (e) {
+    console.error('[shop-sections] delete error:', e);
+    res.status(500).json({ ok: false, error: 'Failed to delete the collection.' });
   }
 });
 

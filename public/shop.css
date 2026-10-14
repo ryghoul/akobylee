@@ -125,15 +125,113 @@ body.editor-enabled .bandana-card.is-selected {
   background: rgba(225, 6, 0, 0.06);
 }
 
+/* The underline sits on the header so editor tools line up with the label. */
+.section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(85, 11, 20, 0.15);
+}
+
 .section-label {
   font-size: 0.7rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--taupe);
   font-weight: 600;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(85, 11, 20, 0.15);
+}
+
+.section-hidden-tag {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(85, 11, 20, 0.08);
+  color: var(--wine);
+  letter-spacing: 0.08em;
+  text-transform: none;
+}
+
+.shop-section-hidden {
+  opacity: 0.75;
+}
+
+/* ── Editor: collection tools ── */
+.section-tools {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.section-tools button {
+  font-family: var(--font);
+  font-size: 0.72rem;
+  padding: 4px 10px;
+  border: 1px solid rgba(85, 11, 20, 0.3);
+  border-radius: 6px;
+  background: var(--ivory);
+  color: var(--wine);
+  cursor: pointer;
+}
+
+.section-tools button:hover:not(:disabled),
+.section-tools button:focus-visible {
+  background: var(--wine);
+  color: var(--ivory);
+}
+
+.section-tools button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.section-tools .section-drag {
+  cursor: grab;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.shop-section.section-dragging { opacity: 0.5; }
+.shop-section.drop-before { box-shadow: 0 -3px 0 var(--ako-bright-red); }
+.shop-section.drop-after  { box-shadow: 0 3px 0 var(--ako-bright-red); }
+
+.collection-style-picker {
+  border: 1px solid rgba(85, 11, 20, 0.15);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.collection-style-picker legend {
+  padding: 0 4px;
+}
+
+/* Beats the shared .menu-editor-form label/input rules (uppercase grid,
+   full-width inputs), which suit text fields but not radio options. */
+.menu-editor-form .collection-style-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.85rem;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+
+.menu-editor-form .collection-style-option input {
+  width: auto;
+  padding: 0;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.collection-error {
+  color: var(--ako-bright-red);
+  font-size: 0.82rem;
 }
 
 /* ─────────────────────────────────────────────
