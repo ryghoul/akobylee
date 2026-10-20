@@ -27,7 +27,7 @@
   home.setAttribute('aria-hidden', 'true');
 
   /* ── Skip landing on return visits ── */
-  if (localStorage.getItem('ako_visited')) {
+  if (window.akoReturningVisitor) {
     landing.style.display       = 'none';
     home.setAttribute('aria-hidden', 'false');
     logoBtn.style.transition    = 'none';
@@ -37,8 +37,6 @@
     homeContent.classList.add('visible');
     parallaxActive = true;
     positionOrbitLinks();
-  } else {
-    localStorage.setItem('ako_visited', '1');
   }
 
   /* ── Entry animation ── */

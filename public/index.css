@@ -34,6 +34,24 @@
   pointer-events: auto;
 }
 
+/* The visit check runs before the body is painted. */
+.returning-visitor .landing {
+  display: none;
+}
+
+.returning-visitor .logo-btn {
+  opacity: 1;
+  pointer-events: auto;
+  transition: none;
+}
+
+.returning-visitor .nav-links,
+.returning-visitor .home-content {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
 /* ── Home nav bar ── */
 .home-nav {
   display: flex;
